@@ -7,6 +7,8 @@
 #include "Microphone.h"
 
 #define FFT_LOG 9
+// capture sample rate
+#define SAMP_RATE 11025
 
 using namespace std;
 

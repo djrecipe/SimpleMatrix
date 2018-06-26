@@ -15,17 +15,21 @@ export USER_DEFINES=-DRGB_SLOWDOWN_GPIO=1
 # Configure compiler and libraries:
 CXX = g++
 CXXFLAGS = -Wall -std=c++11 -O3 -I. -I./rpi-rgb-led-matrix/include -I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host -I/opt/vc/include/interface/vmcs_host/linux -L./rpi-rgb-led-matrix/lib -L/opt/vc/lib
-DISPLAY_LIBS = -lrgbmatrix -lrt -lm -lpthread -lbcm_host -lconfig++ -ldl
+DISPLAY_LIBS = -lrgbmatrix -lrt -lm -lpthread -lbcm_host -lconfig++
 SOUND_LIBS = -lasound -lsndfile
+FFT_LIBS = -ldl
 
 # Makefile rules:
-all: microphone-test display-test
+all: microphone-test display-test fft-test
 
 microphone-test: microphone-test.o Microphone.o
 	$(CXX) -o $@ $^ $(CXXFLAGS) $(SOUND_LIBS)
 
 display-test: display-test.o GridTransformer.o Config.o glcdfont.o ./rpi-rgb-led-matrix/lib/librgbmatrix.a
 	$(CXX) -o $@ $^ $(CXXFLAGS) $(DISPLAY_LIBS)
+	
+fft-test: fft-test.o FFT.o mailbox.o gpu_fft.o gpu_fft_base.o gpu_fft_shaders.o gpu_fft_twiddles.o
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(FFT_LIBS)
 
 %.o: %.cpp $(DEPS)
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
@@ -36,5 +40,5 @@ display-test: display-test.o GridTransformer.o Config.o glcdfont.o ./rpi-rgb-led
 .PHONY: clean
 
 clean:
-	rm -f *.o rpi-fb-matrix display-test microphone-test
+	rm -f *.o rpi-fb-matrix display-test microphone-test fft-test
 	$(MAKE) -C ./rpi-rgb-led-matrix/lib clean
