@@ -45,48 +45,53 @@ void printCanvas(Canvas* canvas, int x, int y, const string& message,
   }
 }
 
+void printTest(Canvas* canvas, int width, int height)
+{
+	int r = 0, g = 0, b = 0;
+	int total = width * height;
+	for (int i = 0; i < width; i++)
+	{
+		for (int j = 0; j < height; j++)
+		{
+			r = (int)(255.0*((float)(i * j))/((float)(total)));
+			g = (int)(255.0*((float)(i * j)) / ((float)(total)));
+			b = (int)(255.0*((float)(i * j)) / ((float)(total)));
+			canvas->SetPixel(i, j, r, g, b);
+		}
+	}
+	return;
+}
+
 static void sigintHandler(int s) {
   running = false;
 }
 
-static void usage(const char* progname) {
-  std::cerr << "Usage: " << progname << " [flags] [config-file]" << std::endl;
-  std::cerr << "Flags:" << std::endl;
-  rgb_matrix::PrintMatrixFlags(stderr);
-}
+int main(int argc, char** argv)
+{
+  try
+  {
+    Config config(argc >= 2 ? argv[1] : "/dev/null");
 
-int main(int argc, char** argv) {
-  try {
-    // Initialize from flags.
-    rgb_matrix::RGBMatrix::Options matrix_options;
-    rgb_matrix::RuntimeOptions runtime_options;
-    if (!rgb_matrix::ParseOptionsFromFlags(&argc, &argv,
-                                           &matrix_options, &runtime_options)) {
-      usage(argv[0]);
-      return 1;
-    }
+	// Initialize GPIO
+	rgb_matrix::GPIO io;
 
-    Config config(&matrix_options, argc >= 2 ? argv[1] : "/dev/null");
-    cout << "Using config values: " << endl
-         << " display_width: " << config.getDisplayWidth() << endl
-         << " display_height: " << config.getDisplayHeight() << endl
-         << " panel_width: " << config.getPanelWidth() << endl
-         << " panel_height: " << config.getPanelHeight() << endl
-         << " chain_length: " << config.getChainLength() << endl
-         << " parallel_count: " << config.getParallelCount() << endl;
+	if (!io.Init())
+	{
+		throw runtime_error("Error while initializing rpi-led-matrix library");
+	}
+	int width = config.getPanelWidth();
+	int height = config.getPanelHeight();
+	int chain_length = config.getChainLength();
+	int parallel_count = config.getParallelCount();
 
-    // Initialize matrix library.
-    // Create canvas and apply GridTransformer.
-    RGBMatrix *canvas = CreateMatrixFromOptions(matrix_options, runtime_options);
+    RGBMatrix *canvas = new RGBMatrix(&io, height, chain_length, parallel_count);
 
     int panel_rows = config.getParallelCount();
     int panel_columns = config.getChainLength();
-    if (config.hasTransformer()) {
-      GridTransformer grid = config.getGridTransformer();
-      canvas->ApplyStaticTransformer(grid);
-      panel_rows = grid.getRows();
-      panel_columns = grid.getColumns();
-    }
+    GridTransformer* grid = config.getGridTransformer();
+    canvas->SetTransformer(grid);
+    panel_rows = grid->getRows();
+    panel_columns = grid->getColumns();
 
     cout << " grid rows: " << panel_rows << endl
          << " grid cols: " << panel_columns << endl;
@@ -104,6 +109,8 @@ int main(int argc, char** argv) {
         printCanvas(canvas, x, y, pos.str());
       }
     }
+	sleep(5);
+	printTest(canvas, config.getDisplayWidth(), config.getDisplayHeight());
     // Loop forever waiting for Ctrl-C signal to quit.
     signal(SIGINT, sigintHandler);
     cout << "Press Ctrl-C to quit..." << endl;
@@ -115,7 +122,6 @@ int main(int argc, char** argv) {
   }
   catch (const exception& ex) {
     cerr << ex.what() << endl;
-    usage(argv[0]);
     return -1;
   }
   return 0;

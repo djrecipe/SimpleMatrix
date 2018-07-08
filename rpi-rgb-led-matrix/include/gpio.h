@@ -1,3 +1,18 @@
+// -*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+// Copyright (C) 2013 Henner Zeller <h.zeller@acm.org>
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation version 2.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://gnu.org/licenses/gpl-2.0.txt>
+
 #ifndef RPI_GPIO_H
 #define RPI_GPIO_H
 
@@ -9,35 +24,43 @@
 // this.
 namespace rgb_matrix {
 // For now, everything is initialized as output.
-class GPIO
-{
-	public:
-	// Available bits that actually have pins.
-	static const uint32_t kValidBits;
+class GPIO {
+ public:
+  // Available bits that actually have pins.
+  static const uint32_t kValidBits;
 
-	GPIO();
+  GPIO();
 
   // Initialize before use. Returns 'true' if successful, 'false' otherwise
   // (e.g. due to a permission problem).
-  bool Init();
+  bool Init(int
+#if RGB_SLOWDOWN_GPIO
+            slowdown = RGB_SLOWDOWN_GPIO
+#else
+            slowdown = 1
+#endif
+            );
 
   // Initialize outputs.
   // Returns the bits that are actually set.
   uint32_t InitOutputs(uint32_t outputs, bool adafruit_hack_needed = false);
 
   // Set the bits that are '1' in the output. Leave the rest untouched.
-	inline void SetBits(uint32_t value)
-	{
-		if (!value) return;
-		*gpio_set_bits_ = value;
-		return;
-	}
+  inline void SetBits(uint32_t value) {
+    if (!value) return;
+    *gpio_set_bits_ = value;
+    for (int i = 0; i < slowdown_; ++i) {
+      *gpio_set_bits_ = value;
+    }
+  }
 
   // Clear the bits that are '1' in the output. Leave the rest untouched.
-  inline void ClearBits(uint32_t value)
-  {
+  inline void ClearBits(uint32_t value) {
     if (!value) return;
     *gpio_clr_bits_ = value;
+    for (int i = 0; i < slowdown_; ++i) {
+      *gpio_clr_bits_ = value;
+    }
   }
 
   // Write all the bits of "value" mentioned in "mask". Leave the rest untouched.
@@ -52,6 +75,7 @@ class GPIO
 
  private:
   uint32_t output_bits_;
+  int slowdown_;
   volatile uint32_t *gpio_port_;
   volatile uint32_t *gpio_set_bits_;
   volatile uint32_t *gpio_clr_bits_;

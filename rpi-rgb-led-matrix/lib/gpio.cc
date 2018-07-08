@@ -132,7 +132,7 @@ namespace rgb_matrix {
    (1 << 19) | (1 << 20) | (1 << 21) | (1 << 26)
 );
 
-GPIO::GPIO() : output_bits_(0), gpio_port_(NULL) {
+GPIO::GPIO() : output_bits_(0), slowdown_(1), gpio_port_(NULL) {
 }
 
 uint32_t GPIO::InitOutputs(uint32_t outputs,
@@ -226,16 +226,15 @@ static uint32_t *mmap_bcm_register(bool isRPi2, off_t register_offset) {
 }
 
 // Based on code example found in http://elinux.org/RPi_Low-level_peripherals
-bool GPIO::Init()
-{
-	gpio_port_ = mmap_bcm_register(IsRaspberryPi2(), GPIO_REGISTER_OFFSET);
-	if (gpio_port_ == NULL)
-	{
-		return false;
-	}
-	gpio_set_bits_ = gpio_port_ + (0x1C / sizeof(uint32_t));
-	gpio_clr_bits_ = gpio_port_ + (0x28 / sizeof(uint32_t));
-	return true;
+bool GPIO::Init(int slowdown) {
+  slowdown_ = slowdown;
+  gpio_port_ = mmap_bcm_register(IsRaspberryPi2(), GPIO_REGISTER_OFFSET);
+  if (gpio_port_ == NULL) {
+    return false;
+  }
+  gpio_set_bits_ = gpio_port_ + (0x1C / sizeof(uint32_t));
+  gpio_clr_bits_ = gpio_port_ + (0x28 / sizeof(uint32_t));
+  return true;
 }
 
 /*

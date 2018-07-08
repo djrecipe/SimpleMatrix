@@ -27,6 +27,11 @@
 
 namespace rgb_matrix {
 RuntimeOptions::RuntimeOptions() :
+#ifdef RGB_SLOWDOWN_GPIO
+  gpio_slowdown(RGB_SLOWDOWN_GPIO),
+#else
+  gpio_slowdown(1),
+#endif
   daemon(0),            // Don't become a daemon by default.
   drop_privileges(1),    // Encourage good practice: drop privileges by default.
   do_gpio_init(true)
@@ -193,6 +198,8 @@ static bool FlagInit(int &argc, char **&argv,
       }
 
       //-- Runtime options.
+      if (ConsumeIntFlag("slowdown-gpio", it, end, &ropts->gpio_slowdown, &err))
+        continue;
       if (ropts->daemon >= 0 && ConsumeBoolFlag("daemon", it, &bool_scratch)) {
         ropts->daemon = bool_scratch ? 1 : 0;
         continue;
@@ -282,9 +289,15 @@ RGBMatrix *CreateMatrixFromOptions(const RGBMatrix::Options &options,
     return NULL;
   }
 
+  if (runtime_options.gpio_slowdown < 0 || runtime_options.gpio_slowdown > 4) {
+    fprintf(stderr, "--led-slowdown-gpio=%d is outside usable range\n",
+            runtime_options.gpio_slowdown);
+    return NULL;
+  }
+
   static GPIO io;  // This static var is a little bit icky.
   if (runtime_options.do_gpio_init &&
-      !io.Init()) {
+      !io.Init(runtime_options.gpio_slowdown)) {
     return NULL;
   }
 
@@ -361,6 +374,9 @@ void PrintMatrixFlags(FILE *out, const RGBMatrix::Options &d,
           !d.disable_hardware_pulsing ? "no-" : "",
           !d.disable_hardware_pulsing ? "Don't u" : "U");
 
+  fprintf(out, "\t--led-slowdown-gpio=<0..2>: "
+          "Slowdown GPIO. Needed for faster Pis/slower panels "
+          "(Default: %d).\n", r.gpio_slowdown);
   if (r.daemon >= 0) {
     const bool on = (r.daemon > 0);
     fprintf(out,

@@ -360,7 +360,9 @@ private:
 // dropping privileges and becoming a daemon.
 struct RuntimeOptions {
   RuntimeOptions();
-  
+
+  int gpio_slowdown;    // 0 = no slowdown.          Flag: --led-slowdown-gpio
+
   // ----------
   // If the following options are set to disabled with -1, they are not
   // even offered via the command line flags.
