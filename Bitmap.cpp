@@ -1,8 +1,7 @@
 #include "Bitmap.h"
 
-Bitmap::Bitmap(const char * path, float duration, unsigned int width, unsigned int height)
+Bitmap::Bitmap(const char * path, unsigned int width, unsigned int height)
 {
-	this->duration = duration;
 	this->width = width;
 	this->height = height;
 	this->data = new unsigned char[width * height * 3];

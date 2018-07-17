@@ -13,7 +13,7 @@
 #include "Config.h"
 #include "glcdfont.h"
 #include "GridTransformer.h"
-#include "BitmapManager.h"
+#include "BitmapSet.h"
 
 using namespace std;
 using namespace rgb_matrix;
@@ -104,6 +104,7 @@ int main(int argc, char** argv)
 {
   try
   {
+	const clock_t begin_time = clock();
     Config config(argc >= 2 ? argv[1] : "/dev/null");
 
 
@@ -119,9 +120,13 @@ int main(int argc, char** argv)
 	int chain_length = config.getChainLength();
 	int parallel_count = config.getParallelCount();
 
-	BitmapManager bitmap_manager = BitmapManager(5.0);
-	Bitmap* bitmap = new Bitmap(config.getImage(0, 0), 1.0, width*chain_length, height);
-	bitmap_manager.Add(bitmap);
+	float animation_duration = config.getAnimationDuration(0);
+	BitmapSet bitmap_set = BitmapSet(animation_duration);
+	for (int i = 0; i < config.getImageCount(0); i++)
+	{
+		Bitmap* bitmap = new Bitmap(config.getImage(0, i), width*chain_length, height);
+		bitmap_set.Add(bitmap);
+	}
 
     RGBMatrix *canvas = new RGBMatrix(&io, height, chain_length, parallel_count);
 
@@ -150,12 +155,15 @@ int main(int argc, char** argv)
     }
 	sleep(5);
 	//printTest(canvas, config.getDisplayWidth(), config.getDisplayHeight());
-	PrintBitmap(canvas, bitmap);
     // Loop forever waiting for Ctrl-C signal to quit.
     signal(SIGINT, sigintHandler);
     cout << "Press Ctrl-C to quit..." << endl;
-    while (running) {
-      sleep(1);
+    while (running)
+	{
+	  float seconds = (float)(clock() - begin_time) / (float)CLOCKS_PER_SEC;
+	  int bitmap_index = bitmap_set.GetIndex(seconds);
+	  PrintBitmap(canvas, bitmap_set.Get(bitmap_index));
+	  usleep(1000);
     }
     canvas->Clear();
     delete canvas;
