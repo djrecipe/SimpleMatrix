@@ -54,9 +54,11 @@ Config::Config(const string& filename)
 		}
 		// Parse out the individual panel configurations.
 		libconfig::Setting& panels_config = root["panels"];
-		for (int i = 0; i < panels_config.getLength(); ++i) {
+		for (int i = 0; i < panels_config.getLength(); ++i)
+		{
 			libconfig::Setting& row = panels_config[i];
-			for (int j = 0; j < row.getLength(); ++j) {
+			for (int j = 0; j < row.getLength(); ++j)
+			{
 				GridTransformer::Panel panel;
 				// Read panel order (required setting for each panel).
 				panel.order = row[j]["order"];

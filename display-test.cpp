@@ -46,23 +46,6 @@ void printCanvas(Canvas* canvas, int x, int y, const string& message,
   }
 }
 
-void printTest(Canvas* canvas, int width, int height)
-{
-	int r = 0, g = 0, b = 0;
-	int total = width * height;
-	for (int i = 0; i < width; i++)
-	{
-		for (int j = 0; j < height; j++)
-		{
-			r = (int)(255.0*((float)(i * j))/((float)(total)));
-			g = (int)(255.0*((float)(i * j)) / ((float)(total)));
-			b = (int)(255.0*((float)(i * j)) / ((float)(total)));
-			canvas->SetPixel(i, j, r, g, b);
-		}
-	}
-	return;
-}
-
 void PrintBitmap(Canvas* canvas, Bitmap* bitmap)
 {
 	// initialize parameters
@@ -96,7 +79,8 @@ void PrintBitmap(Canvas* canvas, Bitmap* bitmap)
 	return;
 }
 
-static void sigintHandler(int s) {
+static void sigintHandler(int s)
+{
   running = false;
 }
 
@@ -137,13 +121,12 @@ int main(int argc, char** argv)
     panel_rows = grid->getRows();
     panel_columns = grid->getColumns();
 
-    cout << " grid rows: " << panel_rows << endl
-         << " grid cols: " << panel_columns << endl;
-
     // Clear the canvas, then draw on each panel.
     canvas->Fill(0, 0, 0);
-    for (int j=0; j<panel_rows; ++j) {
-      for (int i=0; i<panel_columns; ++i) {
+    for (int j=0; j<panel_rows; ++j)
+	{
+      for (int i=0; i<panel_columns; ++i)
+	  {
         // Compute panel origin position.
         int x = i*config.getPanelWidth();
         int y = j*config.getPanelHeight();
@@ -154,8 +137,7 @@ int main(int argc, char** argv)
       }
     }
 	sleep(5);
-	//printTest(canvas, config.getDisplayWidth(), config.getDisplayHeight());
-    // Loop forever waiting for Ctrl-C signal to quit.
+
     signal(SIGINT, sigintHandler);
     cout << "Press Ctrl-C to quit..." << endl;
     while (running)
@@ -168,7 +150,8 @@ int main(int argc, char** argv)
     canvas->Clear();
     delete canvas;
   }
-  catch (const exception& ex) {
+  catch (const exception& ex)
+  {
     cerr << ex.what() << endl;
     return -1;
   }
