@@ -11,75 +11,78 @@ public:
 	Config(const std::string& filename);
 	~Config();
 
-	float getAnimationDuration(int set_index) const {
-		return _animation_durations[set_index];
+	float getAnimationDuration(int set_index) const
+	{
+		return animationDurations[set_index];
 	}
 
-	int getDisplayWidth() const {
-		return _display_width;
+	int GetDisplayWidth() const
+	{
+		return this->displayWidth;
 	}
-	int getDisplayHeight() const {
-		return _display_height;
+	int GetDisplayHeight() const
+	{
+		return this->displayHeight;
 	}
-	int getLEDCutoff() const {
-		return _led_cutoff;
+	int getLEDCutoff() const
+	{
+		return this->ledCutoff;
 	}
-	int getLEDMaxBrightness() const {
-		return _led_max_brightness;
+	int getLEDMaxBrightness() const
+	{
+		return this->ledMaxBrightness;
 	}
-	int getPanelWidth() const {
-		return _panel_width;
+	int GetPanelWidth() const
+	{
+		return this->panelWidth;
 	}
-	int getPanelHeight() const {
-		return _panel_height;
+	int GetPanelHeight() const
+	{
+		return this->panelHeight;
 	}
-	int getChainLength() const {
-		return _chain_length;
+	int GetChainLength() const
+	{
+		return this->chainLength;
 	}
 	const char* getImage(int set_index, int image_index)
 	{
-		return (*_image_sets[set_index])[image_index].c_str();
+		return (*imageSets[set_index])[image_index].c_str();
 	}
-	int getImageCount(int index) const {
-		return _image_sets[index]->size();
-	}
-	int getImageSetCount() const {
-		return _image_sets.size();
-	}
-	int getImageSetDuration() const {
-		return _image_set_duration;
-	}
-	int getParallelCount() const {
-		return _parallel_count;
-	}
-	GridTransformer* getGridTransformer() const
+	int getImageCount(int index) const
 	{
-		return new GridTransformer(_display_width, _display_height, _panel_width, _panel_height, _chain_length, _panels);
+		return this->imageSets[index]->size();
 	}
-	bool hasCropOrigin() const {
-		return (_crop_x > -1) && (_crop_y > -1);
+	int getImageSetCount() const
+	{
+		return this->imageSets.size();
 	}
-	int getCropX() const {
-		return _crop_x;
+	int getImageSetDuration() const
+	{
+		return this->imageSetDuration;
 	}
-	int getCropY() const {
-		return _crop_y;
+	int getParallelCount() const
+	{
+		return parallelCount;
+	}
+	std::vector<GridTransformer::Panel> GetPanels() const
+	{
+		return this->panels;
 	}
 
+	GridTransformer::Panel GetPanel(libconfig::Setting row);
+
 private:
-	int _display_width,
-		_display_height,
-		_panel_width,
-		_panel_height,
-		_chain_length,
-		_parallel_count,
-		_crop_x,
-		_crop_y;
-	int _led_cutoff,
-		_led_max_brightness;
-	int _image_set_duration;
-	std::vector<float> _animation_durations;
-	std::vector<GridTransformer::Panel> _panels;
-	std::vector<std::vector<std::string>*> _image_sets;
+	int displayWidth,
+		displayHeight,
+		panelWidth,
+		panelHeight,
+		chainLength,
+		parallelCount,
+	int ledCutoff,
+		ledMaxBrightness;
+	int imageSetDuration;
+	std::vector<float> animationDurations;
+	std::vector<GridTransformer::Panel> panels;
+	std::vector<std::vector<std::string>*> imageSets;
 };
 

@@ -99,10 +99,12 @@ int main(int argc, char** argv)
 	{
 		throw runtime_error("Error while initializing rpi-led-matrix library");
 	}
-	int width = config.getPanelWidth();
-	int height = config.getPanelHeight();
-	int chain_length = config.getChainLength();
+	int width = config.GetPanelWidth();
+	int height = config.GetPanelHeight();
+	int chain_length = config.GetChainLength();
 	int parallel_count = config.getParallelCount();
+	int display_width = config.GetDisplayWidth();
+	int display_height = config.GetDisplayHeight();
 
 	float animation_duration = config.getAnimationDuration(0);
 	BitmapSet bitmap_set = BitmapSet(animation_duration);
@@ -115,8 +117,8 @@ int main(int argc, char** argv)
     RGBMatrix *canvas = new RGBMatrix(&io, height, chain_length, parallel_count);
 
     int panel_rows = config.getParallelCount();
-    int panel_columns = config.getChainLength();
-    GridTransformer* grid = config.getGridTransformer();
+    int panel_columns = config.GetChainLength();
+    GridTransformer* grid = new GridTransformer(display_width, display_height, width, height, chain_length, config.GetPanels());
     canvas->SetTransformer(grid);
     panel_rows = grid->getRows();
     panel_columns = grid->getColumns();
@@ -128,8 +130,8 @@ int main(int argc, char** argv)
       for (int i=0; i<panel_columns; ++i)
 	  {
         // Compute panel origin position.
-        int x = i*config.getPanelWidth();
-        int y = j*config.getPanelHeight();
+        int x = i*config.GetPanelWidth();
+        int y = j*config.GetPanelHeight();
         // Print the current grid position to the top left (origin) of the panel.
         stringstream pos;
         pos << i << "," << j;
