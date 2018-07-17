@@ -13,6 +13,7 @@
 #include "Config.h"
 #include "glcdfont.h"
 #include "GridTransformer.h"
+#include "BitmapManager.h"
 
 using namespace std;
 using namespace rgb_matrix;
@@ -62,6 +63,39 @@ void printTest(Canvas* canvas, int width, int height)
 	return;
 }
 
+void PrintBitmap(Canvas* canvas, Bitmap* bitmap)
+{
+	// initialize parameters
+	int x = 0, y = 0, r = 0, g = 0, b = 0, i = 0, j = 0;
+	float decay = 0.0, bin_gain = 1.0, red_gain = 1.0, green_gain = 1.0, blue_gain = 1.0;
+	unsigned char* data = bitmap->GetData();
+	// iterate through each pixel in the bitmap
+	for (x = 0; x<bitmap->GetWidth(); x++)
+	{
+		for (y = 0; y<bitmap->GetHeight(); y++)
+		{
+			// check if pixel is already occupied
+			//if (this->grid->GetPixelState(x, y))
+			//	continue;
+			// calculate index into single dimensional array of pixel data
+			int index = y * bitmap->GetWidth() * 3 + x * 3;
+			// check for black pixel (reduce calculation time)
+			if (((int)data[index] < 1) && ((int)data[index + 1] < 1) && ((int)data[index + 2] < 1))
+			{
+				canvas->SetPixel(x, y, 0, 0, 0);
+				continue;
+			}
+			// calculate color
+			r = (float)data[index] * red_gain;
+			g = (float)data[index + 1] * green_gain;
+			b = (float)data[index + 2] * blue_gain;
+			// draw
+			canvas->SetPixel(x, y, r, g, b);
+		}
+	}
+	return;
+}
+
 static void sigintHandler(int s) {
   running = false;
 }
@@ -71,6 +105,7 @@ int main(int argc, char** argv)
   try
   {
     Config config(argc >= 2 ? argv[1] : "/dev/null");
+
 
 	// Initialize GPIO
 	rgb_matrix::GPIO io;
@@ -83,6 +118,10 @@ int main(int argc, char** argv)
 	int height = config.getPanelHeight();
 	int chain_length = config.getChainLength();
 	int parallel_count = config.getParallelCount();
+
+	BitmapManager bitmap_manager = BitmapManager(5.0);
+	Bitmap* bitmap = new Bitmap(config.getImage(0, 0), 1.0, width*chain_length, height);
+	bitmap_manager.Add(bitmap);
 
     RGBMatrix *canvas = new RGBMatrix(&io, height, chain_length, parallel_count);
 
@@ -110,7 +149,8 @@ int main(int argc, char** argv)
       }
     }
 	sleep(5);
-	printTest(canvas, config.getDisplayWidth(), config.getDisplayHeight());
+	//printTest(canvas, config.getDisplayWidth(), config.getDisplayHeight());
+	PrintBitmap(canvas, bitmap);
     // Loop forever waiting for Ctrl-C signal to quit.
     signal(SIGINT, sigintHandler);
     cout << "Press Ctrl-C to quit..." << endl;
@@ -126,3 +166,5 @@ int main(int argc, char** argv)
   }
   return 0;
 }
+
+
