@@ -19,7 +19,7 @@ FFT::FFT(int fft_log)
 	return;
 }
 
-void FFT::GetBins(short* buffer, int* bins, int bin_count, int sample_rate)
+void FFT::Get(short* buffer, int* bins, int bin_count, int sample_rate)
 {
 	// initialize parameters
 	int full_count = 1 << this->fftLog;
@@ -65,6 +65,74 @@ void FFT::GetBins(short* buffer, int* bins, int bin_count, int sample_rate)
 		}
 	}
 	return;
+}
+
+void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options)
+{
+	// initialize parameters
+	int i = 0, j = 0;
+	int min = 999999999, max = -999999999, bin_max = -999999999;
+	// calculate highest and lowest peaks of a given frequency bin
+	for (j = 0; j<count; j++)
+	{
+		// reset current frequency bin max
+		bin_max = 0;
+		// iterate through all bin history (even not displayed ones)
+		for (i = 0; i<total_depth; i++)
+		{
+			// convert to db
+			if ((options & Logarithmic) != 0)
+			{
+				normalized_bins[i][j] = 20.0 * log10(bins[i][j]);
+			}
+			// ignore negative values/db
+			normalized_bins[i][j] = fmax(normalized_bins[i][j], 0);
+			// calculate max for all history of current frequency bin
+			bin_max = fmax(bin_max, normalized_bins[i][j]);
+			// calculate max for all history of all frequency bins
+			max = fmax(max, normalized_bins[i][j]);
+		}
+		// calculate smallest peak occurring to any given frequency bin over all history
+		min = fmin(min, bin_max);
+	}
+	// calculate range 
+	int range = max - min;
+	float ratio = 0.5;
+	// normalize displayed bins only
+	int abs_max = 0;
+	for (i = 0; i<depth; i++)
+	{
+		for (j = 0; j<count; j++)
+		{
+			// autoscale
+			if ((options & Autoscale) != 0)
+			{
+				// calculate ratio (0.0 -> 1.0)
+				ratio = (float)(normalized_bins[i][j] - min) / (float)range;
+				// cull negative values (i.e. amplitudes which are underrange)
+				ratio = fmax(ratio, 0.0);
+				//fprintf(stderr, "%f\n", ratio);
+				normalized_bins[i][j] = FULL_SCALE * ratio;
+			}
+			// apply sigmoid approximation (emphasize peaks and scale 0.0-100.0)
+			if ((options & Sigmoid) != 0)
+			{
+				normalized_bins[i][j] = SigmoidFunction((double)normalized_bins[i][j]);
+				abs_max = fmax(normalized_bins[i][j], abs_max);
+			}
+		}
+	}
+	return;
+}
+
+double FFT::SigmoidFunction(double value)
+{
+	/*
+	through testing I have found that in order to approach a desired full scale value, the left-hand side constant (in the demoninator)
+	needs to be equal to the numerator divided by the desired full scale
+	*/
+	double constant = SIGMOID_NUMERATOR / FULL_SCALE;
+	return SIGMOID_NUMERATOR / (constant + pow(M_E, -1.0*((value - SIGMOID_OFFSET) / SIGMOID_SLOPE)));
 }
 
 FFT::~FFT()

@@ -26,25 +26,10 @@
 #define TOTAL_BIN_DEPTH 64
 // history count for each frequency bin (for display)
 #define BIN_DEPTH 8
-#define FULL_SCALE 100.0
-// sigmoid numerator value
-// with logarithmic also enabled, decreasing this value allows you to stretch the sigmoid shape along the x-axis
-#define SIGMOID_NUMERATOR 10.0
-// sigmoid X offset (higher = more low frequency attenuation, more amplitude required to hit gain threshold)
-// with logarithmic also enabled, increasing this number will exponentially increase the amount of amplitude required to hit full scale db
-#define SIGMOID_OFFSET 25.0
-// sigmoid sloep (higher = slopes slower, less effect of attenuation/gain)
-// with logarithmic also enabled, increasing this number will result in a sharper corner and a closer resemblance to the 20log10 function
-// *** this parameter is of great interest
-#define SIGMOID_SLOPE 12.0
 
 using namespace std;
 using namespace rgb_matrix;
 
-
-enum FFTOptions { None = 0, Logarithmic = 1, Sigmoid = 2, Autoscale = 4 };
-
-inline FFTOptions operator|(FFTOptions a, FFTOptions b) { return static_cast<FFTOptions>(static_cast<int>(a) | static_cast<int>(b)); }
 
 // Global to keep track of if the program should run.
 // Will be set false by a SIGINT handler when ctrl-c is
@@ -73,7 +58,7 @@ void printCanvas(GridTransformer* canvas, int x, int y, const string& message,
   }
 }
 
-void PrintBitmap(GridTransformer* canvas, Bitmap* bitmap, int bins[][BIN_COUNT])
+void PrintBitmap(GridTransformer* canvas, Bitmap* bitmap, int** bins, int bin_count, int bin_depth)
 {
 	// initialize parameters
 	int x = 0, y = 0, r = 0, g = 0, b = 0, i = 0, j = 0;
@@ -81,21 +66,21 @@ void PrintBitmap(GridTransformer* canvas, Bitmap* bitmap, int bins[][BIN_COUNT])
 	unsigned char* data = bitmap->GetData();
 	// calculate color gains based on audio frequency content
 	// iterate through bins, depthwise
-	for (i = 0; i<BIN_DEPTH; i++)
+	for (i = 0; i<bin_depth; i++)
 	{
 		// calculate decay (based on age)
-		decay = (float)(BIN_DEPTH - i) / (float)BIN_DEPTH;
+		decay = (float)(BIN_DEPTH - i) / (float)bin_depth;
 		// iterate through all frequency bins (of a given depth)
-		for (j = 0; j<BIN_COUNT; j++)
+		for (j = 0; j<bin_count; j++)
 		{
 			// calculate base gain (based on bin amplitude) (0.0 -> 2.0)
 			bin_gain = (float)bins[i][j] / (FULL_SCALE / 2.0);
 			// increases with bin frequency (0.1 -> 1.0)
-			blue_gain = fmax(bin_gain * ((float)(j + 1) / (float)BIN_COUNT)*decay, blue_gain);
+			blue_gain = fmax(bin_gain * ((float)(j + 1) / (float)bin_count)*decay, blue_gain);
 			// increases towards center frequency (0.1 -> 1.0 -> 0.1)
-			green_gain = fmax(bin_gain * ((float)(BIN_COUNT / 2 - abs((j + 1) - BIN_COUNT / 2)) / (float)(BIN_COUNT / 2))*decay, green_gain);
+			green_gain = fmax(bin_gain * ((float)(BIN_COUNT / 2 - abs((j + 1) - bin_count / 2)) / (float)(BIN_COUNT / 2))*decay, green_gain);
 			// decreases with bin frequency (1.0 -> 0.1)
-			red_gain = fmax(bin_gain * ((float)(BIN_COUNT - j) / (float)BIN_COUNT)*decay, red_gain);
+			red_gain = fmax(bin_gain * ((float)(BIN_COUNT - j) / (float)bin_count)*decay, red_gain);
 		}
 	}
 	// iterate through each pixel in the bitmap
@@ -130,73 +115,7 @@ static void sigintHandler(int s)
   running = false;
 }
 
-double SigmoidFunction(double value)
-{
-	/*
-	through testing I have found that in order to approach a desired full scale value, the left-hand side constant (in the demoninator)
-	needs to be equal to the numerator divided by the desired full scale
-	*/
-	double constant = SIGMOID_NUMERATOR / FULL_SCALE;
-	return SIGMOID_NUMERATOR / (constant + pow(M_E, -1.0*((value - SIGMOID_OFFSET) / SIGMOID_SLOPE)));
-}
 
-void NormalizeBins(int bins[][BIN_COUNT], int normalized_bins[][BIN_COUNT], FFTOptions options)
-{
-	// initialize parameters
-	int i = 0, j = 0;
-	int min = 999999999, max = -999999999, bin_max = -999999999;
-	// calculate highest and lowest peaks of a given frequency bin
-	for (j = 0; j<BIN_COUNT; j++)
-	{
-		// reset current frequency bin max
-		bin_max = 0;
-		// iterate through all bin history (even not displayed ones)
-		for (i = 0; i<TOTAL_BIN_DEPTH; i++)
-		{
-			// convert to db
-			if ((options & Logarithmic) != 0)
-			{
-				normalized_bins[i][j] = 20.0 * log10(bins[i][j]);
-			}
-			// ignore negative values/db
-			normalized_bins[i][j] = fmax(normalized_bins[i][j], 0);
-			// calculate max for all history of current frequency bin
-			bin_max = fmax(bin_max, normalized_bins[i][j]);
-			// calculate max for all history of all frequency bins
-			max = fmax(max, normalized_bins[i][j]);
-		}
-		// calculate smallest peak occurring to any given frequency bin over all history
-		min = fmin(min, bin_max);
-	}
-	// calculate range 
-	int range = max - min;
-	float ratio = 0.5;
-	// normalize displayed bins only
-	int abs_max = 0;
-	for (i = 0; i<BIN_DEPTH; i++)
-	{
-		for (j = 0; j<BIN_COUNT; j++)
-		{
-			// autoscale
-			if ((options & Autoscale) != 0)
-			{
-				// calculate ratio (0.0 -> 1.0)
-				ratio = (float)(normalized_bins[i][j] - min) / (float)range;
-				// cull negative values (i.e. amplitudes which are underrange)
-				ratio = fmax(ratio, 0.0);
-				//fprintf(stderr, "%f\n", ratio);
-				normalized_bins[i][j] = FULL_SCALE * ratio;
-			}
-			// apply sigmoid approximation (emphasize peaks and scale 0.0-100.0)
-			if ((options & Sigmoid) != 0)
-			{
-				normalized_bins[i][j] = SigmoidFunction((double)normalized_bins[i][j]);
-				abs_max = fmax(normalized_bins[i][j], abs_max);
-			}
-		}
-	}
-	return;
-}
 
 int main(int argc, char** argv)
 {
@@ -241,7 +160,7 @@ int main(int argc, char** argv)
 	grid->SetCutoff(config.GetLEDCutoff());
 	grid->SetMaxBrightness(config.GetLEDMaxBrightness());
 
-	canvas->Fill(0, 0, 0);
+	grid->Fill(0, 0, 0);
     for (int j=0; j<panel_rows; ++j)
 	{
       for (int i=0; i<panel_columns; ++i)
@@ -257,11 +176,13 @@ int main(int argc, char** argv)
     }
 	sleep(1);
 
-	int bins[TOTAL_BIN_DEPTH][BIN_COUNT];
-	int normalized_bins[TOTAL_BIN_DEPTH][BIN_COUNT];
+	int** bins = new int*[TOTAL_BIN_DEPTH];
+	int** normalized_bins = new int*[TOTAL_BIN_DEPTH];
 	int i = 0, j = 0;
 	for (i = 0; i<TOTAL_BIN_DEPTH; i++)
 	{
+		bins[i] = new int[BIN_COUNT];
+		normalized_bins[i] = new int[BIN_COUNT];
 		for (j = 0; j<BIN_COUNT; j++)
 		{
 			bins[i][j] = normalized_bins[i][j] = 0;
@@ -283,18 +204,25 @@ int main(int argc, char** argv)
 			}
 		}
 		microphone->GetData(buf, buffer_size);
-		fft->GetBins(buf, &bins[0][0], BIN_COUNT, SAMP_RATE);
+		fft->Get(buf, &bins[0][0], BIN_COUNT, SAMP_RATE);
 		FFTOptions options = Logarithmic | Autoscale | Sigmoid;
-		NormalizeBins(bins, normalized_bins, options);
+		fft->Normalize(bins, normalized_bins, BIN_COUNT, BIN_DEPTH, TOTAL_BIN_DEPTH, options);
 		float seconds = (float)(clock() - begin_time) / (float)CLOCKS_PER_SEC;
 		int bitmap_index = bitmap_set.GetIndex(seconds);
-		PrintBitmap(grid, bitmap_set.Get(bitmap_index), normalized_bins);
+		PrintBitmap(grid, bitmap_set.Get(bitmap_index), normalized_bins, BIN_COUNT, BIN_DEPTH);
 		usleep(1000);
     }
     canvas->Clear();
     delete canvas;
 	delete microphone;
 	delete fft;
+	for (int i = 0; i < TOTAL_BIN_DEPTH; i++)
+	{
+		delete bins[i];
+		delete normalized_bins[i];
+	}
+	delete bins;
+	delete normalized_bins;
   }
   catch (const exception& ex)
   {
