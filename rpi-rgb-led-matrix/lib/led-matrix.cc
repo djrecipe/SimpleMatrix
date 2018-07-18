@@ -48,7 +48,8 @@
 
 namespace rgb_matrix {
 // Pump pixels to screen. Needs to be high priority real-time because jitter
-class RGBMatrix::UpdateThread : public Thread {
+class RGBMatrix::UpdateThread : public Thread
+{
 public:
   UpdateThread(GPIO *io, FrameCanvas *initial_frame, bool show_refresh)
     : io_(io), show_refresh_(show_refresh), running_(true),
@@ -178,51 +179,29 @@ RGBMatrix::Options::Options() :
   // Nothing to see here.
 }
 
-RGBMatrix::RGBMatrix(GPIO *io, const Options &options)
-  : params_(options), io_(NULL), updater_(NULL), shared_pixel_mapper_(NULL) {
-  assert(params_.Validate(NULL));
-  if (params_.multiplexing != 0) {
-    params_.rows /= 2;
-    params_.cols *= 2;
-  }
-  internal::Framebuffer::InitHardwareMapping(params_.hardware_mapping);
-  active_ = CreateFrameCanvas();
-  Clear();
-  SetGPIO(io, true);
-  switch (params_.multiplexing) {
-  case 1:
-    ApplyStaticTransformer(internal::StripeTransformer(params_.rows * 2,
-                                                       params_.cols / 2));
-    break;
-  case 2:
-    ApplyStaticTransformer(internal::CheckeredTransformer(params_.rows * 2,
-                                                          params_.cols / 2));
-    break;
-  case 3:
-    ApplyStaticTransformer(internal::SpiralTransformer(params_.rows * 2,
-                                                       params_.cols / 2));
-    break;
-  case 4:
-    ApplyStaticTransformer(internal::ZStripeTransformer(params_.rows * 2,
-                                                        params_.cols / 2));
-    break;
-  }
+RGBMatrix::RGBMatrix(int rows, int chained_displays, int parallel_displays)
+  : params_(Options()), updater_(NULL), shared_pixel_mapper_(NULL)
+{
+	params_.rows = rows;
+	params_.chain_length = chained_displays;
+	params_.parallel = parallel_displays;
+	assert(params_.Validate(NULL));
+	internal::Framebuffer::InitHardwareMapping(params_.hardware_mapping);
+	active_ = CreateFrameCanvas();
+	Clear();
+
+	// initialize GPIO
+	rgb_matrix::GPIO io;
+	if (!io.Init())
+	{
+		throw runtime_error("Error while initializing rpi-led-matrix library");
+	}
+	this->SetGPIO(io, true);
+	return;
 }
 
-RGBMatrix::RGBMatrix(GPIO *io, int rows, int chained_displays,
-                     int parallel_displays)
-  : params_(Options()), io_(NULL), updater_(NULL), shared_pixel_mapper_(NULL) {
-  params_.rows = rows;
-  params_.chain_length = chained_displays;
-  params_.parallel = parallel_displays;
-  assert(params_.Validate(NULL));
-  internal::Framebuffer::InitHardwareMapping(params_.hardware_mapping);
-  active_ = CreateFrameCanvas();
-  Clear();
-  SetGPIO(io, true);
-}
-
-RGBMatrix::~RGBMatrix() {
+RGBMatrix::~RGBMatrix()
+{
   updater_->Stop();
   updater_->WaitStopped();
   delete updater_;
@@ -235,22 +214,26 @@ RGBMatrix::~RGBMatrix() {
     delete created_frames_[i];
   }
   delete shared_pixel_mapper_;
+  return;
 }
 
-void RGBMatrix::SetGPIO(GPIO *io, bool start_thread) {
-  if (io != NULL && io_ == NULL) {
-    io_ = io;
-    internal::Framebuffer::InitGPIO(io_, params_.rows, params_.parallel,
-                                    !params_.disable_hardware_pulsing,
-                                    params_.pwm_lsb_nanoseconds,
-                                    params_.row_address_type);
-  }
-  if (start_thread) {
-    StartRefresh();
-  }
+void RGBMatrix::SetGPIO(GPIO *io, bool start_thread)
+{
+	if (io != NULL && io_ == NULL)
+	{
+		io_ = io;
+		internal::Framebuffer::InitGPIO(io_, params_.rows, params_.parallel, !params_.disable_hardware_pulsing,
+			params_.pwm_lsb_nanoseconds, params_.row_address_type);
+	}
+	if (start_thread)
+	{
+		StartRefresh();
+	}
+	return;
 }
 
-bool RGBMatrix::StartRefresh() {
+bool RGBMatrix::StartRefresh()
+{
   if (updater_ == NULL && io_ != NULL) {
     updater_ = new UpdateThread(io_, active_, params_.show_refresh_rate);
     // If we have multiple processors, the kernel
@@ -265,7 +248,8 @@ bool RGBMatrix::StartRefresh() {
   return updater_ != NULL;
 }
 
-FrameCanvas *RGBMatrix::CreateFrameCanvas() {
+FrameCanvas *RGBMatrix::CreateFrameCanvas()
+{
   FrameCanvas *result =
     new FrameCanvas(new internal::Framebuffer(params_.rows,
                                               params_.cols
@@ -342,7 +326,8 @@ void RGBMatrix::Clear() {
   active_->Clear();
 }
 
-void RGBMatrix::Fill(uint8_t red, uint8_t green, uint8_t blue) {
+void RGBMatrix::Fill(uint8_t red, uint8_t green, uint8_t blue)
+{
   active_->Fill(red, green, blue);
 }
 
@@ -363,7 +348,8 @@ public:
     x_new = x;
     y_new = y;
   }
-  virtual void SetPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b) {
+  virtual void SetPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b)
+  {
     const internal::PixelDesignator *orig_designator = old_mapper_->get(x, y);
     if (orig_designator && new_mapper_) {
       // Tell the new mapper at the new location what after the mapping was

@@ -1,13 +1,9 @@
-// LED matrix library transformer to map a rectangular canvas onto a complex
-// chain of matrices.
-// Author: Tony DiCola
 #include "GridTransformer.h"
 
 using namespace rgb_matrix;
 using namespace std;
 
-GridTransformer::GridTransformer(int width, int height, int panel_width, int panel_height,
-                                 int chain_length, const std::vector<Panel>& panels, Canvas* source):
+GridTransformer::GridTransformer(int width, int height, int panel_width, int panel_height, int chain_length, const std::vector<Panel>& panels, Canvas* source):
   _width(width),
   _height(height),
   _panel_width(panel_width),
@@ -20,6 +16,7 @@ GridTransformer::GridTransformer(int width, int height, int panel_width, int pan
   assert(_width % _panel_width == 0);
   // Display height must be a multiple of the panel pixel row count.
   assert(_height % _panel_height == 0);
+  assert(_source != NULL);
   // Compute number of rows and columns of panels.
   _rows = _height / _panel_height;
   _cols = _width / _panel_width;
@@ -31,9 +28,10 @@ GridTransformer::GridTransformer(int width, int height, int panel_width, int pan
   return;
 }
 
-void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue) {
-  assert(_source != NULL);
-  if ((x < 0) || (y < 0) || (x >= _width) || (y >= _height)) {
+void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue)
+{
+  if ((x < 0) || (y < 0) || (x >= _width) || (y >= _height))
+  {
     return;
   }
 
@@ -83,9 +81,8 @@ void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t
   // Determine y offset into the source panel based on its parrallel chain value.
   int y_offset = panel.parallel*_panel_height;
 
-  _source->SetPixel(x_offset + x,
-                    y_offset + y,
-                    red, green, blue);
+  this->_source->SetPixel(x_offset + x, y_offset + y, red, green, blue);
+  return;
 }
 
 void GridTransformer::SetCutoff(int value)
@@ -100,7 +97,8 @@ void GridTransformer::SetMaxBrightness(int value)
 	return;
 }
 
-Canvas* GridTransformer::Transform(Canvas* source) {
+Canvas* GridTransformer::Transform(Canvas* source)
+{
   assert(source != NULL);
   int swidth = source->width();
   int sheight = source->height();

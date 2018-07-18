@@ -1,6 +1,3 @@
-// -*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; -*-
-// Program to aid in the testing of LED matrix chains.
-// Author: Tony DiCola
 #include <cstdint>
 #include <iostream>
 #include <sstream>
@@ -125,13 +122,6 @@ int main(int argc, char** argv)
     Config config(argc >= 2 ? argv[1] : "/dev/null");
 
 
-	// Initialize GPIO
-	rgb_matrix::GPIO io;
-
-	if (!io.Init())
-	{
-		throw runtime_error("Error while initializing rpi-led-matrix library");
-	}
 	int width = config.GetPanelWidth();
 	int height = config.GetPanelHeight();
 	int chain_length = config.GetChainLength();
@@ -148,19 +138,19 @@ int main(int argc, char** argv)
 	}
 
 	Microphone * microphone = new Microphone("plughw:1,0");
-	FFT * fft = new FFT(FFT_LOG);
+	FFT * fft = new FFT(FFT_LOG, SAMP_RATE);
+	fft->Create(BIN_COUNT, TOTAL_BIN_DEPTH);
 
-    RGBMatrix *canvas = new RGBMatrix(&io, height, chain_length, parallel_count);
+    RGBMatrix *canvas = new RGBMatrix(height, chain_length, parallel_count);
 
-    int panel_rows = config.getParallelCount();
-    int panel_columns = config.GetChainLength();
     GridTransformer* grid = new GridTransformer(display_width, display_height, width, height, chain_length, config.GetPanels(), canvas);
-    panel_rows = grid->getRows();
-    panel_columns = grid->getColumns();
 	grid->SetCutoff(config.GetLEDCutoff());
 	grid->SetMaxBrightness(config.GetLEDMaxBrightness());
-
 	grid->Fill(0, 0, 0);
+
+	// print test
+	int panel_rows = grid->getRows();
+	int panel_columns = grid->getColumns();
     for (int j=0; j<panel_rows; ++j)
 	{
       for (int i=0; i<panel_columns; ++i)
@@ -176,18 +166,6 @@ int main(int argc, char** argv)
     }
 	sleep(1);
 
-	int** bins = new int*[TOTAL_BIN_DEPTH];
-	int** normalized_bins = new int*[TOTAL_BIN_DEPTH];
-	int i = 0, j = 0;
-	for (i = 0; i<TOTAL_BIN_DEPTH; i++)
-	{
-		bins[i] = new int[BIN_COUNT];
-		normalized_bins[i] = new int[BIN_COUNT];
-		for (j = 0; j<BIN_COUNT; j++)
-		{
-			bins[i][j] = normalized_bins[i][j] = 0;
-		}
-	}
 
     signal(SIGINT, sigintHandler);
     cout << "Press Ctrl-C to quit..." << endl;
@@ -195,34 +173,17 @@ int main(int argc, char** argv)
 	short buf[buffer_size];
     while (running)
 	{
-		// move bins
-		for (i = TOTAL_BIN_DEPTH - 1; i>0; i--)
-		{
-			for (j = 0; j<BIN_COUNT; j++)
-			{
-				bins[i][j] = bins[i - 1][j];
-			}
-		}
 		microphone->GetData(buf, buffer_size);
-		fft->Get(buf, &bins[0][0], BIN_COUNT, SAMP_RATE);
-		FFTOptions options = Logarithmic | Autoscale | Sigmoid;
-		fft->Normalize(bins, normalized_bins, BIN_COUNT, BIN_DEPTH, TOTAL_BIN_DEPTH, options);
+		fft->Cycle(buf, BIN_DEPTH);
 		float seconds = (float)(clock() - begin_time) / (float)CLOCKS_PER_SEC;
 		int bitmap_index = bitmap_set.GetIndex(seconds);
-		PrintBitmap(grid, bitmap_set.Get(bitmap_index), normalized_bins, BIN_COUNT, BIN_DEPTH);
+		PrintBitmap(grid, bitmap_set.Get(bitmap_index), bins, BIN_COUNT, BIN_DEPTH);
 		usleep(1000);
     }
     canvas->Clear();
     delete canvas;
 	delete microphone;
 	delete fft;
-	for (int i = 0; i < TOTAL_BIN_DEPTH; i++)
-	{
-		delete bins[i];
-		delete normalized_bins[i];
-	}
-	delete bins;
-	delete normalized_bins;
   }
   catch (const exception& ex)
   {

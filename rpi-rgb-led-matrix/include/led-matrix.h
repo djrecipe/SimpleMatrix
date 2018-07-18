@@ -49,11 +49,13 @@ class PixelMapper;
 // If you arrange the panels in a different way in the physical space, write
 // a CanvasTransformer that does coordinate remapping and which should be added
 // to the transformers, like with UArrangementTransformer in demo-main.cc.
-class RGBMatrix : public Canvas {
+class RGBMatrix : public Canvas
+{
 public:
   // Options to initialize the RGBMatrix. Also see the main README.md for
   // detailed descriptions of the command line flags.
-  struct Options {
+  struct Options
+  {
     Options();   // Creates a default option set.
 
     // Validate the options and possibly output a message to string. If
@@ -136,25 +138,9 @@ public:
     const char *led_rgb_sequence;  // Flag: --led-rgb-sequence
   };
 
-  // Create an RGBMatrix.
-  //
-  // Needs an initialized GPIO object and configuration options from the
-  // RGBMatrix::Options struct.
-  //
-  // If you pass an GPIO object (which has to be Init()ialized), it will start
-  // the internal thread to start the screen immediately.
-  //
-  // If you need finer control over when the refresh thread starts (which you
-  // might when you become a daemon), pass NULL here and see SetGPIO() method.
-  //
-  // The resulting canvas is (options.rows * options.parallel) high and
-  // (32 * options.chain_length) wide.
-  RGBMatrix(GPIO *io, const Options &options);
-
   // Simple constructor if you don't need the fine-control with the
   // Options object.
-  RGBMatrix(GPIO *io, int rows = 32, int chained_displays = 1,
-            int parallel_displays = 1);
+  RGBMatrix(int rows, int chained_displays, int parallel_displays);
 
   virtual ~RGBMatrix();
 

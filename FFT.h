@@ -28,17 +28,27 @@ class FFT
 {
 
 public:
-	FFT(int log);
+	FFT(int log, int sample_rate);
 	~FFT();
 
+	void Archive(int** bins, int count, int depth);
+	void Create(int count, int depth);
+	int** Cycle(short* buffer, int display_depth);
 	void Get(short* buffer, int* bins, int bin_count, int sample_rate);
 	void Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options);
 
 private:
 	int fftLog;
+	int sampleRate;
 	int mailbox;
 	struct GPU_FFT *fft;
 
+	int binCount;
+	int binDepth;
+	int** bins;
+	int** normalizedBins;
+
+	void DeleteBins();
 	double SigmoidFunction(double value);
 
 };

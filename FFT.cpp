@@ -1,9 +1,13 @@
 #include "FFT.h"
 
-FFT::FFT(int fft_log)
+FFT::FFT(int fft_log, int sample_rate)
 {
-	fprintf(stderr, "Initializing FFT\n");
+	this->binCount = 0;
+	this->binDepth = 0;
+	this->bins = NULL;
+	this->normalizedBins = NULL;
 	this->fftLog = fft_log;
+	this->sampleRate = sample_rate;
 	this->mailbox = mbox_open();
 	int ret = gpu_fft_prepare(this->mailbox, this->fftLog, GPU_FFT_REV, FFT_JOBS, &(this->fft));
 
@@ -15,11 +19,67 @@ FFT::FFT(int fft_log)
 		case -4: throw std::runtime_error("Unable to map Videocore peripherals into ARM memory space.\n");
 		case -5: throw std::runtime_error("Can't open libbcm_host.\n");
 	}
-	fprintf(stderr, "Successfully Initialized FFT\n");
 	return;
 }
 
-void FFT::Get(short* buffer, int* bins, int bin_count, int sample_rate)
+void FFT::Archive(int** bins, int count, int depth)
+{
+	for (int i = depth - 1; i>0; i--)
+	{
+		for (int j = 0; j<count; j++)
+		{
+			bins[i][j] = bins[i - 1][j];
+		}
+	}
+	return;
+}
+
+void FFT::Create(int count, int depth)
+{
+	this->DeleteBins();
+	this->binCount = count;
+	this->binDepth = depth;
+	this->bins = new int*[depth];
+	this->normalized_bins = new int*[depth];
+	int i = 0, j = 0;
+	for (i = 0; i<depth; i++)
+	{
+		this->bins[i] = new int[count];
+		this->normalized_bins[i] = new int[count];
+		for (j = 0; j<count; j++)
+		{
+			this->bins[i][j] = this->normalized_bins[i][j] = 0;
+		}
+	}
+	return;
+}
+
+int** FFT::Cycle(short* data, int display_depth)
+{
+	this->Archive(this->bins, this->binCount, this->binDepth);
+	this->Get(data, this->bins, this->binCount, this->sampleRate);
+	FFTOptions options = Logarithmic | Autoscale | Sigmoid;
+	this->Normalize(this->bins, this->normalizedBins, this->binCount, display_depth, this->binDepth, options);
+	return this->normalizedBins;
+}
+
+void FFT::DeleteBins()
+{
+	for (int i = 0; i < this.binDepth; i++)
+	{
+		delete this->bins[i];
+		delete this->normalizedBins[i];
+	}
+	delete this->bins;
+	delete this->normalizedBins;
+	this->bins = NULL;
+	this->normalizedBins = NULL;
+	this->binCount = 0;
+	this->binDepth = 0;
+	return;
+}
+
+void FFT::Get(short* buffer, int* bins, int bin_count)
 {
 	// initialize parameters
 	int full_count = 1 << this->fftLog;
@@ -48,7 +108,7 @@ void FFT::Get(short* buffer, int* bins, int bin_count, int sample_rate)
 	for (i = 0; i<full_count / 2; i++)
 	{
 		// calculate frequency
-		float frequency = (float)i * ((float)(sample_rate) / (float)(full_count));
+		float frequency = (float)i * ((float)(this->sampleRate) / (float)(full_count));
 		// iterate through frequency bins
 		// sort results into discrete frequency bins
 		for (j = 0; j<bin_count; j++)
@@ -71,12 +131,12 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 {
 	// initialize parameters
 	int i = 0, j = 0;
-	int min = 999999999, max = -999999999, bin_max = -999999999;
+	int min = 999999999, max = -999999999;
 	// calculate highest and lowest peaks of a given frequency bin
 	for (j = 0; j<count; j++)
 	{
 		// reset current frequency bin max
-		bin_max = 0;
+		int bin_max = 0;
 		// iterate through all bin history (even not displayed ones)
 		for (i = 0; i<total_depth; i++)
 		{
@@ -97,9 +157,7 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 	}
 	// calculate range 
 	int range = max - min;
-	float ratio = 0.5;
 	// normalize displayed bins only
-	int abs_max = 0;
 	for (i = 0; i<depth; i++)
 	{
 		for (j = 0; j<count; j++)
@@ -108,7 +166,7 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 			if ((options & Autoscale) != 0)
 			{
 				// calculate ratio (0.0 -> 1.0)
-				ratio = (float)(normalized_bins[i][j] - min) / (float)range;
+				float ratio = (float)(normalized_bins[i][j] - min) / (float)range;
 				// cull negative values (i.e. amplitudes which are underrange)
 				ratio = fmax(ratio, 0.0);
 				//fprintf(stderr, "%f\n", ratio);
@@ -118,7 +176,6 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 			if ((options & Sigmoid) != 0)
 			{
 				normalized_bins[i][j] = SigmoidFunction((double)normalized_bins[i][j]);
-				abs_max = fmax(normalized_bins[i][j], abs_max);
 			}
 		}
 	}
@@ -127,18 +184,15 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 
 double FFT::SigmoidFunction(double value)
 {
-	/*
-	through testing I have found that in order to approach a desired full scale value, the left-hand side constant (in the demoninator)
-	needs to be equal to the numerator divided by the desired full scale
-	*/
+	/* in order to approach a desired full scale value, the left-hand side constant (in the demoninator)
+	needs to be equal to the numerator divided by the desired full scale */
 	double constant = SIGMOID_NUMERATOR / FULL_SCALE;
 	return SIGMOID_NUMERATOR / (constant + pow(M_E, -1.0*((value - SIGMOID_OFFSET) / SIGMOID_SLOPE)));
 }
 
 FFT::~FFT()
 {
-	// release FFT
-	fprintf(stderr, "\tReleasing fft data\n");
 	gpu_fft_release(this->fft);
+	this->DeleteBins();
 	return;
 }
