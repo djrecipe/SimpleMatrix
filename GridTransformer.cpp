@@ -7,13 +7,13 @@ using namespace rgb_matrix;
 using namespace std;
 
 GridTransformer::GridTransformer(int width, int height, int panel_width, int panel_height,
-                                 int chain_length, const std::vector<Panel>& panels):
+                                 int chain_length, const std::vector<Panel>& panels, Canvas* source):
   _width(width),
   _height(height),
   _panel_width(panel_width),
   _panel_height(panel_height),
   _chain_length(chain_length),
-  _source(NULL),
+  _source(source),
   _panels(panels)
 {
   // Display width must be a multiple of the panel pixel column count.
@@ -25,6 +25,10 @@ GridTransformer::GridTransformer(int width, int height, int panel_width, int pan
   _cols = _width / _panel_width;
   // Check panel definition list has exactly the expected number of panels.
   assert((_rows * _cols) == (int)_panels.size());
+
+  this->cutoff = 0;
+  this->maxBrightness = 255;
+  return;
 }
 
 void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue) {
@@ -33,6 +37,13 @@ void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t
     return;
   }
 
+  // check if pixel exceeds cutoff (minimum) check
+  if (red < this->cutoff && green < this->cutoff && blue < this->cutoff)
+  {
+	  red = 0;
+	  green = 0;
+	  blue = 0;
+  }
   // Figure out what row and column panel this pixel is within.
   int row = y / _panel_height;
   int col = x / _panel_width;
@@ -75,6 +86,18 @@ void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t
   _source->SetPixel(x_offset + x,
                     y_offset + y,
                     red, green, blue);
+}
+
+void GridTransformer::SetCutoff(int value)
+{
+	this->cutoff = value;
+	return;
+}
+
+void GridTransformer::SetMaxBrightness(int value)
+{
+	this->maxBrightness = value;
+	return;
 }
 
 Canvas* GridTransformer::Transform(Canvas* source) {

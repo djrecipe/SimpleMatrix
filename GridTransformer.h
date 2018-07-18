@@ -19,7 +19,7 @@ public:
   };
 
   GridTransformer(int width, int height, int panel_width, int panel_height,
-                  int chain_length, const std::vector<Panel>& panels);
+                  int chain_length, const std::vector<Panel>& panels, Canvas* source);
   virtual ~GridTransformer() {}
 
   // Canvas interface implementation:
@@ -49,6 +49,8 @@ public:
   int getColumns() const {
     return _cols;
   }
+  void SetCutoff(int value);
+  void SetMaxBrightness(int value);
 
 private:
   int _width,
@@ -58,6 +60,8 @@ private:
       _chain_length,
       _rows,
       _cols;
+  int cutoff,
+	  maxBrightness;
   rgb_matrix::Canvas* _source;
   std::vector<Panel> _panels;
 };

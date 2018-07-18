@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include <libconfig.h++>
+
 #include "GridTransformer.h"
 
 class Config
@@ -24,11 +26,11 @@ public:
 	{
 		return this->displayHeight;
 	}
-	int getLEDCutoff() const
+	int GetLEDCutoff() const
 	{
 		return this->ledCutoff;
 	}
-	int getLEDMaxBrightness() const
+	int GetLEDMaxBrightness() const
 	{
 		return this->ledMaxBrightness;
 	}
@@ -69,7 +71,7 @@ public:
 		return this->panels;
 	}
 
-	GridTransformer::Panel GetPanel(libconfig::Setting row);
+	GridTransformer::Panel GetPanel(libconfig::Setting* row);
 
 private:
 	int displayWidth,
@@ -77,7 +79,7 @@ private:
 		panelWidth,
 		panelHeight,
 		chainLength,
-		parallelCount,
+		parallelCount;
 	int ledCutoff,
 		ledMaxBrightness;
 	int imageSetDuration;

@@ -5,8 +5,6 @@
 #include <vector>
 #include <iostream>
 
-#include <libconfig.h++>
-
 #include "Config.h"
 
 using namespace std;
@@ -49,7 +47,7 @@ Config::Config(const string& filename)
 			libconfig::Setting& row = panels_config[i];
 			for (int j = 0; j < row.getLength(); ++j)
 			{
-				GridTransformer::Panel panel = this->GetPanel(row[j]);
+				GridTransformer::Panel panel = this->GetPanel(&row[j]);
 				// Add the panel to the list of panel configurations.
 				panels.push_back(panel);
 			}
@@ -123,37 +121,37 @@ Config::Config(const string& filename)
 	return;
 }
 
-GridTransformer::Panel Config::GetPanel(libconfig::Setting row)
+GridTransformer::Panel Config::GetPanel(libconfig::Setting* row)
 {
 	GridTransformer::Panel panel;
 	// Read panel order (required setting for each panel).
-	panel.order = row[j]["order"];
+	panel.order = (*row)["order"];
 	// Set default values for rotation and parallel chain, then override
 	// them with any panel-specific configuration values.
 	panel.rotate = 0;
 	panel.parallel = 0;
-	row[j].lookupValue("rotate", panel.rotate);
-	row[j].lookupValue("parallel", panel.parallel);
+	(*row).lookupValue("rotate", panel.rotate);
+	(*row).lookupValue("parallel", panel.parallel);
 	// Perform validation of panel values.
 	// If panels are square allow rotations that are a multiple of 90, otherwise
 	// only allow a rotation of 180 degrees.
 	if ((panelWidth == panelHeight) && (panel.rotate % 90 != 0))
 	{
 		stringstream error;
-		error << "Panel " << i << "," << j << " rotation must be a multiple of 90 degrees!";
+		error << "Panel rotation must be a multiple of 90 degrees!";
 		throw invalid_argument(error.str());
 	}
 	else if ((panelWidth != panelHeight) && (panel.rotate % 180 != 0))
 	{
 		stringstream error;
-		error << "Panel row " << j << ", column " << i << " can only be rotated 180 degrees!";
+		error << "Panel can only be rotated 180 degrees!";
 		throw invalid_argument(error.str());
 	}
 	// Check that parallel is value between 0 and 2 (up to 3 parallel chains).
 	if ((panel.parallel < 0) || (panel.parallel > 2))
 	{
 		stringstream error;
-		error << "Panel row " << j << ", column " << i << " parallel value must be 0, 1, or 2!";
+		error << "Panel parallel value must be 0, 1, or 2!";
 		throw invalid_argument(error.str());
 	}
 	return panel;

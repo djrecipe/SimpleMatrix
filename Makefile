@@ -25,8 +25,8 @@ all: microphone-test display-test fft-test
 microphone-test: microphone-test.o Microphone.o
 	$(CXX) -o $@ $^ $(CXXFLAGS) $(SOUND_LIBS)
 
-display-test: display-test.o Bitmap.o BitmapSet.o GridTransformer.o Config.o glcdfont.o ./rpi-rgb-led-matrix/lib/librgbmatrix.a
-	$(CXX) -o $@ $^ $(CXXFLAGS) $(DISPLAY_LIBS)
+display-test: display-test.o Bitmap.o BitmapSet.o GridTransformer.o Microphone.o FFT.o mailbox.o gpu_fft.o gpu_fft_base.o gpu_fft_shaders.o gpu_fft_twiddles.o Config.o glcdfont.o ./rpi-rgb-led-matrix/lib/librgbmatrix.a
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(DISPLAY_LIBS) $(SOUND_LIBS) $(FFT_LIBS)
 	
 fft-test: fft-test.o FFT.o mailbox.o gpu_fft.o gpu_fft_base.o gpu_fft_shaders.o gpu_fft_twiddles.o
 	$(CXX) -o $@ $^ $(CXXFLAGS) $(FFT_LIBS)
