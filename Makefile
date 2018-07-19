@@ -10,7 +10,7 @@
 # details on options:
 #   https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/lib/Makefile
 export HARDWARE_DESC=adafruit-hat
-export USER_DEFINES=-DRGB_SLOWDOWN_GPIO=1
+export USER_DEFINES=-DRGB_SLOWDOWN_GPIO=4
 
 # Configure compiler and libraries:
 CXX = g++

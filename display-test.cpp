@@ -121,7 +121,6 @@ int main(int argc, char** argv)
 	const clock_t begin_time = clock();
     Config config(argc >= 2 ? argv[1] : "/dev/null");
 
-
 	int width = config.GetPanelWidth();
 	int height = config.GetPanelHeight();
 	int chain_length = config.GetChainLength();

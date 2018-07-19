@@ -31,15 +31,17 @@ public:
     pthread_cond_init(&frame_done_, NULL);
   }
 
-  void Stop() {
+  void Stop()
+  {
     MutexLock l(&running_mutex_);
     running_ = false;
   }
 
-  virtual void Run() {
+  virtual void Run()
+  {
     unsigned frame_count = 0;
-    while (running()) {
-      struct timeval start, end;
+    while (running())
+	{
 
       current_frame_->framebuffer()->DumpToMatrix(io_);
 
@@ -61,9 +63,11 @@ public:
 
       ++frame_count;
     }
+	return;
   }
 
-  FrameCanvas *SwapOnVSync(FrameCanvas *other, unsigned frame_fraction) {
+  FrameCanvas *SwapOnVSync(FrameCanvas *other, unsigned frame_fraction)
+  {
     MutexLock l(&frame_sync_);
     FrameCanvas *previous = current_frame_;
     next_frame_ = other;
@@ -108,7 +112,7 @@ RGBMatrix::Options::Options() :
     pwm_lsb_nanoseconds(250),
 #endif
 
-    brightness(100),
+    brightness(70),
 
 #ifdef RGB_SCAN_INTERLACED
     scan_mode(1),
@@ -148,7 +152,7 @@ RGBMatrix::RGBMatrix(int rows, int chained_displays, int parallel_displays)
 
 	// initialize GPIO
 	rgb_matrix::GPIO* io = new rgb_matrix::GPIO();
-	if (!io->Init())
+	if (!io->Init(4))
 	{
 		throw runtime_error("Error while initializing rpi-led-matrix library");
 	}
