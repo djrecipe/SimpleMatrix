@@ -58,11 +58,6 @@ public:
   {
     Options();   // Creates a default option set.
 
-    // Validate the options and possibly output a message to string. If
-    // "err" is NULL, outputs validation problems to stderr.
-    // Returns 'true' if all options look good.
-    bool Validate(std::string *err) const;
-
     // Name of the hardware mapping. Something like "regular" or "adafruit-hat"
     const char *hardware_mapping;
 

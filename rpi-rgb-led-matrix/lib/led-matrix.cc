@@ -1,18 +1,3 @@
-// -*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; -*-
-// Copyright (C) 2013 Henner Zeller <h.zeller@acm.org>
-//
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation version 2.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://gnu.org/licenses/gpl-2.0.txt>
-
 #include "led-matrix.h"
 
 #include <assert.h>
@@ -24,35 +9,23 @@
 #include <time.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include <stdexcept>
 
 #include "gpio.h"
 #include "thread.h"
 #include "framebuffer-internal.h"
 #include "multiplex-transformers-internal.h"
 
-// Leave this in here for a while. Setting things from old defines.
-#if defined(ADAFRUIT_RGBMATRIX_HAT)
-# warning "You are using an old way to select the Adafruit HAT by defining -DADAFRUIT_RGBMATRIX_HAT"
-#  warning "The new way to do this is to set HARDWARE_DESC=adafruit-hat"
-# warning "Check out https://github.com/hzeller/rpi-rgb-led-matrix#switch-the-pinout"
-# undef DEFAULT_HARDWARE
-# define DEFAULT_HARDWARE "adafruit-hat"
-#endif
+using namespace std;
 
-#if defined(ADAFRUIT_RGBMATRIX_HAT_PWM)
-#  warning "You are using an old way to select the Adafruit HAT with flicker mod by defining -DADAFRUIT_RGBMATRIX_HAT_PWM"
-#  warning "The new way to do this is to set HARDWARE_DESC=adafruit-hat-pwm"
-# undef DEFAULT_HARDWARE
-# define DEFAULT_HARDWARE "adafruit-hat-pwm"
-#endif
-
-namespace rgb_matrix {
+namespace rgb_matrix
+{
 // Pump pixels to screen. Needs to be high priority real-time because jitter
 class RGBMatrix::UpdateThread : public Thread
 {
 public:
-  UpdateThread(GPIO *io, FrameCanvas *initial_frame, bool show_refresh)
-    : io_(io), show_refresh_(show_refresh), running_(true),
+  UpdateThread(GPIO *io, FrameCanvas *initial_frame)
+    : io_(io), running_(true),
       current_frame_(initial_frame), next_frame_(NULL),
       requested_frame_multiple_(1) {
     pthread_cond_init(&frame_done_, NULL);
@@ -67,9 +40,6 @@ public:
     unsigned frame_count = 0;
     while (running()) {
       struct timeval start, end;
-      if (show_refresh_) {
-        gettimeofday(&start, NULL);
-      }
 
       current_frame_->framebuffer()->DumpToMatrix(io_);
 
@@ -90,13 +60,6 @@ public:
       }
 
       ++frame_count;
-
-      if (show_refresh_) {
-        gettimeofday(&end, NULL);
-        int64_t usec = ((uint64_t)end.tv_sec * 1000000 + end.tv_usec)
-          - ((int64_t)start.tv_sec * 1000000 + start.tv_usec);
-        printf("\b\b\b\b\b\b\b\b%6.1fHz", 1e6 / usec);
-      }
     }
   }
 
@@ -116,7 +79,6 @@ private:
   }
 
   GPIO *const io_;
-  const bool show_refresh_;
   Mutex running_mutex_;
   bool running_;
 
@@ -143,7 +105,7 @@ RGBMatrix::Options::Options() :
 #ifdef LSB_PWM_NANOSECONDS
     pwm_lsb_nanoseconds(LSB_PWM_NANOSECONDS),
 #else
-    pwm_lsb_nanoseconds(130),
+    pwm_lsb_nanoseconds(250),
 #endif
 
     brightness(100),
@@ -163,12 +125,6 @@ RGBMatrix::Options::Options() :
     disable_hardware_pulsing(false),
 #endif
 
-#ifdef SHOW_REFRESH_RATE
-    show_refresh_rate(true),
-#else
-    show_refresh_rate(false),
-#endif
-
 #ifdef INVERSE_RGB_DISPLAY_COLORS
     inverse_colors(true),
 #else
@@ -185,14 +141,14 @@ RGBMatrix::RGBMatrix(int rows, int chained_displays, int parallel_displays)
 	params_.rows = rows;
 	params_.chain_length = chained_displays;
 	params_.parallel = parallel_displays;
-	assert(params_.Validate(NULL));
+
 	internal::Framebuffer::InitHardwareMapping(params_.hardware_mapping);
 	active_ = CreateFrameCanvas();
 	Clear();
 
 	// initialize GPIO
-	rgb_matrix::GPIO io;
-	if (!io.Init())
+	rgb_matrix::GPIO* io = new rgb_matrix::GPIO();
+	if (!io->Init())
 	{
 		throw runtime_error("Error while initializing rpi-led-matrix library");
 	}
@@ -214,6 +170,7 @@ RGBMatrix::~RGBMatrix()
     delete created_frames_[i];
   }
   delete shared_pixel_mapper_;
+  delete io_;
   return;
 }
 
@@ -235,7 +192,7 @@ void RGBMatrix::SetGPIO(GPIO *io, bool start_thread)
 bool RGBMatrix::StartRefresh()
 {
   if (updater_ == NULL && io_ != NULL) {
-    updater_ = new UpdateThread(io_, active_, params_.show_refresh_rate);
+    updater_ = new UpdateThread(io_, active_);
     // If we have multiple processors, the kernel
     // jumps around between these, creating some global flicker.
     // So let's tie it to the last CPU available.

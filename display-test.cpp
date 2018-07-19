@@ -129,7 +129,7 @@ int main(int argc, char** argv)
 	int display_width = config.GetDisplayWidth();
 	int display_height = config.GetDisplayHeight();
 
-	float animation_duration = config.getAnimationDuration(0);
+	float animation_duration = config.getAnimationDuration(1);
 	BitmapSet bitmap_set = BitmapSet(animation_duration);
 	for (int i = 0; i < config.getImageCount(1); i++)
 	{
@@ -174,7 +174,7 @@ int main(int argc, char** argv)
     while (running)
 	{
 		microphone->GetData(buf, buffer_size);
-		fft->Cycle(buf, BIN_DEPTH);
+		int** bins = fft->Cycle(buf, BIN_DEPTH);
 		float seconds = (float)(clock() - begin_time) / (float)CLOCKS_PER_SEC;
 		int bitmap_index = bitmap_set.GetIndex(seconds);
 		PrintBitmap(grid, bitmap_set.Get(bitmap_index), bins, BIN_COUNT, BIN_DEPTH);

@@ -3,7 +3,7 @@
 # So
 #   -lrgbmatrix
 ##
-OBJECTS=gpio.o led-matrix.o options-initialize.o framebuffer.o \
+OBJECTS=gpio.o led-matrix.o framebuffer.o \
         thread.o bdf-font.o graphics.o transformer.o led-matrix-c.o \
 	hardware-mapping.o content-streamer.o multiplex-transformers.o
 TARGET=librgbmatrix
@@ -123,8 +123,8 @@ DEFINES+=$(USER_DEFINES)
 
 DEFINES+=-DDEFAULT_HARDWARE='"$(HARDWARE_DESC)"'
 INCDIR=../include
-CFLAGS=-Wall -O3 -g -fPIC $(DEFINES) -Wextra -Wno-unused-parameter
-CXXFLAGS=$(CFLAGS) -fno-exceptions
+CFLAGS=-Wall -O3 -g -fPIC $(DEFINES) -Wextra -Wno-unused-parameter -fexceptions
+CXXFLAGS=$(CFLAGS) -fexceptions
 
 all : $(TARGET).a $(TARGET).so.1
 

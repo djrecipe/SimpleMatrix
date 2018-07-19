@@ -40,15 +40,15 @@ void FFT::Create(int count, int depth)
 	this->binCount = count;
 	this->binDepth = depth;
 	this->bins = new int*[depth];
-	this->normalized_bins = new int*[depth];
+	this->normalizedBins = new int*[depth];
 	int i = 0, j = 0;
 	for (i = 0; i<depth; i++)
 	{
 		this->bins[i] = new int[count];
-		this->normalized_bins[i] = new int[count];
+		this->normalizedBins[i] = new int[count];
 		for (j = 0; j<count; j++)
 		{
-			this->bins[i][j] = this->normalized_bins[i][j] = 0;
+			this->bins[i][j] = this->normalizedBins[i][j] = 0;
 		}
 	}
 	return;
@@ -57,7 +57,7 @@ void FFT::Create(int count, int depth)
 int** FFT::Cycle(short* data, int display_depth)
 {
 	this->Archive(this->bins, this->binCount, this->binDepth);
-	this->Get(data, this->bins, this->binCount, this->sampleRate);
+	this->Get(data, this->bins[0], this->binCount, this->sampleRate);
 	FFTOptions options = Logarithmic | Autoscale | Sigmoid;
 	this->Normalize(this->bins, this->normalizedBins, this->binCount, display_depth, this->binDepth, options);
 	return this->normalizedBins;
@@ -65,7 +65,7 @@ int** FFT::Cycle(short* data, int display_depth)
 
 void FFT::DeleteBins()
 {
-	for (int i = 0; i < this.binDepth; i++)
+	for (int i = 0; i < this->binDepth; i++)
 	{
 		delete this->bins[i];
 		delete this->normalizedBins[i];
@@ -79,7 +79,7 @@ void FFT::DeleteBins()
 	return;
 }
 
-void FFT::Get(short* buffer, int* bins, int bin_count)
+void FFT::Get(short* buffer, int* bins, int bin_count, int sample_rate)
 {
 	// initialize parameters
 	int full_count = 1 << this->fftLog;
@@ -108,7 +108,7 @@ void FFT::Get(short* buffer, int* bins, int bin_count)
 	for (i = 0; i<full_count / 2; i++)
 	{
 		// calculate frequency
-		float frequency = (float)i * ((float)(this->sampleRate) / (float)(full_count));
+		float frequency = (float)i * ((float)(sample_rate) / (float)(full_count));
 		// iterate through frequency bins
 		// sort results into discrete frequency bins
 		for (j = 0; j<bin_count; j++)
