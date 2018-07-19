@@ -23,9 +23,29 @@ GridTransformer::GridTransformer(int width, int height, int panel_width, int pan
   // Check panel definition list has exactly the expected number of panels.
   assert((_rows * _cols) == (int)_panels.size());
 
+  this->pixelStates = new bool*[width];
+  for (int x = 0; x < width; x++)
+  {
+	  this->pixelStates[x] = new bool[height];
+  }
+
   this->cutoff = 0;
   this->maxBrightness = 255;
   return;
+}
+
+void GridTransformer::ResetScreen()
+{
+	for (int x = 0; x < this->_width; x++)
+	{
+		for (int y = 0; y < this->_height; y++)
+		{
+			if (!this->pixelStates[x][y])
+				this->SetPixel(x, y, 0, 0, 0);
+			this->pixelStates[x][y] = false;
+		}
+	}
+	return;
 }
 
 void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue)
@@ -34,6 +54,10 @@ void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t
   {
     return;
   }
+
+  if (this->pixelStates[x][y])
+	  return;
+  this->pixelStates[x][y] = true;
 
   // check if pixel exceeds cutoff (minimum) check
   if (red < this->cutoff && green < this->cutoff && blue < this->cutoff)
@@ -105,4 +129,14 @@ Canvas* GridTransformer::Transform(Canvas* source)
   assert((_width * _height) == (swidth * sheight));
   _source = source;
   return this;
+}
+
+GridTransformer::~GridTransformer()
+{
+	for (int x = 0; x < this->_width; x++)
+	{
+		delete this->pixelStates[x];
+	}
+	delete this->pixelStates;
+	return;
 }

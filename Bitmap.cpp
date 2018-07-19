@@ -49,14 +49,13 @@ void Bitmap::Read(const char* filename, unsigned char* data)
 	int row_padded = (width * 3 + 3) & (~3);
 	unsigned char tmp;
 
-	int x = 0, y = 0, index = 0;
-	for (y = 0; y < height; y++)
+	for (int y = 0; y < height; y++)
 	{
 		fread(&data[y*row_padded], sizeof(unsigned char), row_padded, f);
-		for (x = 0; x < width; x++)
+		for (int x = 0; x < width; x++)
 		{
 			// Convert (B, G, R) to (R, G, B)
-			index = y * row_padded + (x * 3);
+			int index = y * row_padded + (x * 3);
 			tmp = data[index];
 			data[index] = data[index + 2];
 			data[index + 2] = tmp;

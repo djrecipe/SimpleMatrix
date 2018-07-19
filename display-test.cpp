@@ -85,23 +85,14 @@ void PrintBitmap(GridTransformer* canvas, Bitmap* bitmap, int** bins, int bin_co
 	{
 		for (y = 0; y<bitmap->GetHeight(); y++)
 		{
-			// check if pixel is already occupied
-			//if (this->grid->GetPixelState(x, y))
-			//	continue;
 			// calculate index into single dimensional array of pixel data
 			int index = y * bitmap->GetWidth() * 3 + x * 3;
-			// check for black pixel (reduce calculation time)
-			if (((int)data[index] < 1) && ((int)data[index + 1] < 1) && ((int)data[index + 2] < 1))
-			{
-				canvas->SetPixel(x, y, 0, 0, 0);
-				continue;
-			}
 			// calculate color
 			r = (float)data[index] * red_gain;
 			g = (float)data[index + 1] * green_gain;
 			b = (float)data[index + 2] * blue_gain;
 			// draw
-			canvas->SetPixel(x, y, r, g, b);
+			canvas->SetPixel(bitmap->GetWidth() - x, bitmap->GetHeight() - y, r, g, b);
 		}
 	}
 	return;
@@ -128,11 +119,11 @@ int main(int argc, char** argv)
 	int display_width = config.GetDisplayWidth();
 	int display_height = config.GetDisplayHeight();
 
-	float animation_duration = config.getAnimationDuration(1);
+	float animation_duration = config.getAnimationDuration(0);
 	BitmapSet bitmap_set = BitmapSet(animation_duration);
-	for (int i = 0; i < config.getImageCount(1); i++)
+	for (int i = 0; i < config.getImageCount(0); i++)
 	{
-		Bitmap* bitmap = new Bitmap(config.getImage(1, i), width*chain_length, height);
+		Bitmap* bitmap = new Bitmap(config.getImage(0, i), width*chain_length, height);
 		bitmap_set.Add(bitmap);
 	}
 
@@ -177,6 +168,7 @@ int main(int argc, char** argv)
 		float seconds = (float)(clock() - begin_time) / (float)CLOCKS_PER_SEC;
 		int bitmap_index = bitmap_set.GetIndex(seconds);
 		PrintBitmap(grid, bitmap_set.Get(bitmap_index), bins, BIN_COUNT, BIN_DEPTH);
+		grid->ResetScreen();
 		usleep(1000);
     }
     canvas->Clear();
