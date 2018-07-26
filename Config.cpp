@@ -1,9 +1,4 @@
-#include <sstream>
-#include <stdio.h>
-#include <string.h>
-#include <stdexcept>
-#include <vector>
-#include <iostream>
+
 
 #include "Config.h"
 
@@ -14,9 +9,12 @@ Config::Config(const string& filename)
 {
 	try
 	{
+		// read config file
 		libconfig::Config cfg;
 		cfg.readFile(filename.c_str());
 		libconfig::Setting& root = cfg.getRoot();
+		// audio device
+		audioDevice = root["audio_device"];
 		// dimension configuration values
 		displayWidth = root["display_width"];
 		displayHeight = root["display_height"];

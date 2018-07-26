@@ -1,5 +1,9 @@
 #pragma once
 
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
+#include <stdio>
 #include <string>
 #include <vector>
 
@@ -13,9 +17,14 @@ public:
 	Config(const std::string& filename);
 	~Config();
 
-	float getAnimationDuration(int set_index) const
+	float GetAnimationDuration(int set_index) const
 	{
-		return animationDurations[set_index];
+		return this->animationDurations[set_index];
+	}
+
+	std::string GetAudioDevice() const
+	{
+		return this->audioDevice;
 	}
 
 	int GetDisplayWidth() const
@@ -46,25 +55,25 @@ public:
 	{
 		return this->chainLength;
 	}
-	const char* getImage(int set_index, int image_index)
+	const char* GetImage(int set_index, int image_index)
 	{
 		return (*imageSets[set_index])[image_index].c_str();
 	}
-	int getImageCount(int index) const
+	int GetImageCount(int index) const
 	{
 		return this->imageSets[index]->size();
 	}
-	int getImageSetCount() const
+	int GetImageSetCount() const
 	{
 		return this->imageSets.size();
 	}
-	int getImageSetDuration() const
+	int GetImageSetDuration() const
 	{
 		return this->imageSetDuration;
 	}
-	int getParallelCount() const
+	int GetParallelCount() const
 	{
-		return parallelCount;
+		return this->parallelCount;
 	}
 	std::vector<GridTransformer::Panel> GetPanels() const
 	{
@@ -79,10 +88,11 @@ private:
 		panelWidth,
 		panelHeight,
 		chainLength,
-		parallelCount;
-	int ledCutoff,
-		ledMaxBrightness;
-	int imageSetDuration;
+		parallelCount,
+		ledCutoff,
+		ledMaxBrightness,
+		imageSetDuration;
+	std::string audioDevice;
 	std::vector<float> animationDurations;
 	std::vector<GridTransformer::Panel> panels;
 	std::vector<std::vector<std::string>*> imageSets;

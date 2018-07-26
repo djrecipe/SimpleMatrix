@@ -115,19 +115,18 @@ int main(int argc, char** argv)
 	int width = config.GetPanelWidth();
 	int height = config.GetPanelHeight();
 	int chain_length = config.GetChainLength();
-	int parallel_count = config.getParallelCount();
+	int parallel_count = config.GetParallelCount();
 	int display_width = config.GetDisplayWidth();
 	int display_height = config.GetDisplayHeight();
 
-	float animation_duration = config.getAnimationDuration(0);
+	float animation_duration = config.GetAnimationDuration(0);
 	BitmapSet bitmap_set = BitmapSet(animation_duration);
-	for (int i = 0; i < config.getImageCount(0); i++)
+	for (int i = 0; i < config.GetImageCount(0); i++)
 	{
-		Bitmap* bitmap = new Bitmap(config.getImage(0, i), width*chain_length, height);
-		bitmap_set.Add(bitmap);
+		bitmap_set.Add(config.GetImage(0, i));
 	}
 
-	Microphone * microphone = new Microphone("plughw:1,0");
+	Microphone * microphone = new Microphone(config.GetAudioDevice());
 	FFT * fft = new FFT(FFT_LOG, SAMP_RATE);
 	fft->Create(BIN_COUNT, TOTAL_BIN_DEPTH);
 

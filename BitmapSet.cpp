@@ -9,8 +9,9 @@ BitmapSet::BitmapSet(float duration)
 	return;
 }
 
-void BitmapSet::Add(Bitmap* bitmap)
+void BitmapSet::Add(const char* path)
 {
+	Bitmap * bitmap = new Bitmap(path);
 	this->images.push_back(bitmap);
 	return;
 }

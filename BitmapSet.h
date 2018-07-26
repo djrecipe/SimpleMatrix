@@ -1,6 +1,7 @@
 #pragma once
 
 #include <math.h>
+
 #include "Bitmap.h"
 
 class BitmapSet
@@ -8,7 +9,7 @@ class BitmapSet
 	public:
 		BitmapSet(float set_duration);
 		~BitmapSet();
-		void Add(Bitmap* bitmap);
+		void Add(const char* path);
 		Bitmap* Get(int index);
 		unsigned int GetIndex(float seconds);
 	private:

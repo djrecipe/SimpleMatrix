@@ -10,7 +10,7 @@
 class Bitmap
 {
 public:
-	Bitmap(const char * path, unsigned int width, unsigned int height);
+	Bitmap(const char * path);
 	~Bitmap();
 	unsigned char* GetData();
 	unsigned int GetWidth();
@@ -19,5 +19,5 @@ private:
 	unsigned int width;
 	unsigned int height;
 	unsigned char* data;
-	void Read(const char* filename, unsigned char* data);
+	void Read(const char* filename);
 };

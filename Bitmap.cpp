@@ -1,11 +1,8 @@
 #include "Bitmap.h"
 
-Bitmap::Bitmap(const char * path, unsigned int width, unsigned int height)
+Bitmap::Bitmap(const char * path)
 {
-	this->width = width;
-	this->height = height;
-	this->data = new unsigned char[width * height * 3];
-	this->Read(path, this->data);
+	this->Read(path);
 	return;
 }
 
@@ -24,31 +21,26 @@ unsigned int Bitmap::GetHeight()
 	return this->height;
 }
 
-void Bitmap::Read(const char* filename, unsigned char* data)
+void Bitmap::Read(const char* path)
 {
-	if (filename == NULL or sizeof(filename) < 1)
-		throw "Invalid bitmap filename";
-
-	fprintf(stderr, "Reading bitmap (%s)\n", filename);
+	if (path == NULL or sizeof(path) < 1)
+		throw "Invalid bitmap path";
 
 	// open file
-	FILE* f = fopen(filename, "rb");
+	fprintf(stderr, "Reading bitmap '%s'\n", path);
+	FILE* f = fopen(path, "rb");
 	if (f == NULL)
-		throw "Argument Exception";
+		throw "Failed to open bitmap file";
 
 	// read header
 	unsigned char info[54];
 	fread(info, sizeof(unsigned char), 54, f);
-	int width = *(int*)&info[18];
-	int height = *(int*)&info[22];
-
-	assert(width == this->width);
-	assert(height == this->height);
-
-	//
+	this->width = *(int*)&info[18];
+	this->height = *(int*)&info[22];
+	
+	// read data
 	int row_padded = (width * 3 + 3) & (~3);
-	unsigned char tmp;
-
+	this->data = new unsigned char[width * height * 3];
 	for (int y = 0; y < height; y++)
 	{
 		fread(&data[y*row_padded], sizeof(unsigned char), row_padded, f);
@@ -56,7 +48,7 @@ void Bitmap::Read(const char* filename, unsigned char* data)
 		{
 			// Convert (B, G, R) to (R, G, B)
 			int index = y * row_padded + (x * 3);
-			tmp = data[index];
+			unsigned char tmp = data[index];
 			data[index] = data[index + 2];
 			data[index + 2] = tmp;
 		}
