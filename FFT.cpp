@@ -86,16 +86,18 @@ void FFT::DeleteBins()
 
 bool FFT::DetectRangeEvent(int min, int max, int avg, float seconds)
 {
+	// TODO : do ALL event detection here
 	//fprintf(stderr, "%f\n", seconds);
-	if (seconds - this->eventResponseOccurred < 10.0)
+	//fprintf(stderr, "Min: %d | Max: %d | Avg: %d\n", min, max, avg);
+	int range = max - min;
+	if (seconds - this->eventResponseOccurred < 8.0)
 	{
 		this->rangeEventInvalidated = seconds;
 		return false;
 	}
-	//fprintf(stderr, "Min: %d | Max: %d | Avg: %d\n", min, max, avg);
-	if (avg > 10)
+	if (min > 20)
 		this->rangeEventInvalidated = seconds;
-	if (seconds - this->rangeEventInvalidated > 2)
+	if (seconds - this->rangeEventInvalidated > 0.6)
 	{
 		this->rangeEventInvalidated = seconds;
 		this->eventResponseOccurred = seconds;
