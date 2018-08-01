@@ -21,8 +21,10 @@
 #define SIGMOID_SLOPE 12.0
 
 enum FFTOptions { None = 0, Logarithmic = 1, Sigmoid = 2, Autoscale = 4 };
+enum FFTEvents { NoneFFTEvent = 0, LimitedRangeFFTEvent = 1};
 
 inline FFTOptions operator|(FFTOptions a, FFTOptions b) { return static_cast<FFTOptions>(static_cast<int>(a) | static_cast<int>(b)); }
+inline FFTEvents operator|(FFTEvents a, FFTEvents b) { return static_cast<FFTEvents>(static_cast<int>(a) | static_cast<int>(b)); }
 
 class FFT
 {
@@ -33,9 +35,10 @@ public:
 
 	void Archive(int** bins, int count, int depth);
 	void Create(int count, int depth);
-	int** Cycle(short* buffer, int display_depth);
+	int** Cycle(short* buffer, int display_depth, float seconds);
 	void Get(short* buffer, int* bins, int bin_count, int sample_rate);
-	void Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options);
+	FFTEvents GetEvents();
+	void Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options, int& min, int& max, int& avg);
 
 private:
 	int fftLog;
@@ -48,7 +51,12 @@ private:
 	int** bins;
 	int** normalizedBins;
 
+	float rangeEventInvalidated = 0.0;
+	float eventResponseOccurred = 0.0;
+	FFTEvents fftEvents;
+
 	void DeleteBins();
+	bool DetectRangeEvent(int min, int max, int avg, float seconds);
 	double SigmoidFunction(double value);
 
 };

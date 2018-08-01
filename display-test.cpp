@@ -126,6 +126,12 @@ int main(int argc, char** argv)
 	{
 		bitmap_set.Add(config.GetImage(0, i));
 	}
+	animation_duration = config.GetAnimationDuration(1);
+	BitmapSet bitmap_set2 = BitmapSet(animation_duration);
+	for (int i = 0; i < config.GetImageCount(1); i++)
+	{
+		bitmap_set2.Add(config.GetImage(1, i));
+	}
 
 	fprintf(stderr, "Configuring audio device...\n");
 	std::string device = config.GetAudioDevice();
@@ -163,13 +169,26 @@ int main(int argc, char** argv)
     cout << "Press Ctrl-C to quit..." << endl;
 	int buffer_size = 1 << FFT_LOG;
 	short buf[buffer_size];
+	bool toggle = false;
     while (running)
 	{
-		microphone->GetData(buf, buffer_size);
-		int** bins = fft->Cycle(buf, BIN_DEPTH);
 		float seconds = (float)(clock() - begin_time) / (float)CLOCKS_PER_SEC;
-		int bitmap_index = bitmap_set.GetIndex(seconds);
-		PrintBitmap(grid, bitmap_set.Get(bitmap_index), bins, BIN_COUNT, BIN_DEPTH);
+		microphone->GetData(buf, buffer_size);
+		int** bins = fft->Cycle(buf, BIN_DEPTH, seconds);
+		int bitmap_index = 0;
+		FFTEvents event = fft->GetEvents();
+		if (event == LimitedRangeFFTEvent)
+			toggle = !toggle;
+		if (toggle)
+		{
+			bitmap_index = bitmap_set2.GetIndex(seconds);
+			PrintBitmap(grid, bitmap_set2.Get(bitmap_index), bins, BIN_COUNT, BIN_DEPTH);
+		}
+		else
+		{
+			bitmap_index = bitmap_set.GetIndex(seconds);
+			PrintBitmap(grid, bitmap_set.Get(bitmap_index), bins, BIN_COUNT, BIN_DEPTH);
+		}
 		grid->ResetScreen();
 		usleep(1000);
     }

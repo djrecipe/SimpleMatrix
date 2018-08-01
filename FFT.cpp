@@ -5,7 +5,9 @@ FFT::FFT(int fft_log, int sample_rate)
 	this->binCount = 0;
 	this->binDepth = 0;
 	this->bins = NULL;
+	this->eventResponseOccurred = 0.0;
 	this->normalizedBins = NULL;
+	this->fftEvents = NoneFFTEvent;
 	this->fftLog = fft_log;
 	this->sampleRate = sample_rate;
 	this->mailbox = mbox_open();
@@ -54,12 +56,15 @@ void FFT::Create(int count, int depth)
 	return;
 }
 
-int** FFT::Cycle(short* data, int display_depth)
+int** FFT::Cycle(short* data, int display_depth, float seconds)
 {
 	this->Archive(this->bins, this->binCount, this->binDepth);
 	this->Get(data, this->bins[0], this->binCount, this->sampleRate);
 	FFTOptions options = Logarithmic | Autoscale | Sigmoid;
-	this->Normalize(this->bins, this->normalizedBins, this->binCount, display_depth, this->binDepth, options);
+	int min = 0, max = 0, avg = 0;
+	this->Normalize(this->bins, this->normalizedBins, this->binCount, display_depth, this->binDepth, options, min, max, avg);
+	if (this->DetectRangeEvent(min, max, avg, seconds))
+		this->fftEvents = LimitedRangeFFTEvent;
 	return this->normalizedBins;
 }
 
@@ -77,6 +82,26 @@ void FFT::DeleteBins()
 	this->binCount = 0;
 	this->binDepth = 0;
 	return;
+}
+
+bool FFT::DetectRangeEvent(int min, int max, int avg, float seconds)
+{
+	//fprintf(stderr, "%f\n", seconds);
+	if (seconds - this->eventResponseOccurred < 10.0)
+	{
+		this->rangeEventInvalidated = seconds;
+		return false;
+	}
+	//fprintf(stderr, "Min: %d | Max: %d | Avg: %d\n", min, max, avg);
+	if (avg > 10)
+		this->rangeEventInvalidated = seconds;
+	if (seconds - this->rangeEventInvalidated > 2)
+	{
+		this->rangeEventInvalidated = seconds;
+		this->eventResponseOccurred = seconds;
+		return true;
+	}
+	return false;
 }
 
 void FFT::Get(short* buffer, int* bins, int bin_count, int sample_rate)
@@ -127,11 +152,18 @@ void FFT::Get(short* buffer, int* bins, int bin_count, int sample_rate)
 	return;
 }
 
-void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options)
+FFTEvents FFT::GetEvents()
+{
+	FFTEvents value = this->fftEvents;
+	this->fftEvents = NoneFFTEvent;
+	return value;
+}
+
+void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options, int& min, int& max, int& avg)
 {
 	// initialize parameters
 	int i = 0, j = 0;
-	int min = 999999999, max = -999999999;
+	int full_min = 999999999, full_max = -999999999;
 	// calculate highest and lowest peaks of a given frequency bin
 	for (j = 0; j<count; j++)
 	{
@@ -150,35 +182,50 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 			// calculate max for all history of current frequency bin
 			bin_max = fmax(bin_max, normalized_bins[i][j]);
 			// calculate max for all history of all frequency bins
-			max = fmax(max, normalized_bins[i][j]);
+			full_max = fmax(full_max, normalized_bins[i][j]);
 		}
 		// calculate smallest peak occurring to any given frequency bin over all history
-		min = fmin(min, bin_max);
+		full_min = fmin(full_min, bin_max);
 	}
 	// calculate range 
-	int range = max - min;
+	int range = full_max - full_min;
+	avg = 0;
+	min = 999999999, max = -999999999;
 	// normalize displayed bins only
 	for (i = 0; i<depth; i++)
 	{
+		// reset current frequency bin max
+		int bin_max = 0;
 		for (j = 0; j<count; j++)
 		{
+
 			// autoscale
 			if ((options & Autoscale) != 0)
 			{
 				// calculate ratio (0.0 -> 1.0)
-				float ratio = (float)(normalized_bins[i][j] - min) / (float)range;
+				float ratio = (float)(normalized_bins[i][j] - full_min) / (float)range;
 				// cull negative values (i.e. amplitudes which are underrange)
 				ratio = fmax(ratio, 0.0);
-				//fprintf(stderr, "%f\n", ratio);
+				//fprintf(stderr, "Ratio: %f\n", ratio);
 				normalized_bins[i][j] = FULL_SCALE * ratio;
 			}
+
+			// calculate max for all history of current frequency bin
+			bin_max = fmax(bin_max, normalized_bins[i][j]);
+			// calculate max for all history of all frequency bins
+			max = fmax(max, normalized_bins[i][j]);
+			avg += normalized_bins[i][j];
+
 			// apply sigmoid approximation (emphasize peaks and scale 0.0-100.0)
 			if ((options & Sigmoid) != 0)
 			{
 				normalized_bins[i][j] = SigmoidFunction((double)normalized_bins[i][j]);
 			}
 		}
+		// calculate smallest peak occurring to any given frequency bin over all history
+		min = fmin(min, bin_max);
 	}
+	avg /= (depth * count);
 	return;
 }
 
