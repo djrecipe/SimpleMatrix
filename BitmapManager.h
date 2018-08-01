@@ -11,8 +11,9 @@ public:
 	void AddImage(int index, const char * path);
 	void Clear();
 	void CreateSet(float duration);
-	Bitmap Get(int set_index, int index);
-	int GetIndex(int set_index, float seconds)
+	Bitmap* Get(int set_index, int index);
+	int GetIndex(int set_index, float seconds);
+	~BitmapManager();
 private:
-	std::vector<BitmapSet> sets;
+	std::vector<BitmapSet*> sets;
 };

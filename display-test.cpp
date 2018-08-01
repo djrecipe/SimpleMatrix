@@ -186,7 +186,7 @@ int main(int argc, char** argv)
 
 		// print bitmap
 		int image_index = bitmaps.GetIndex(bitmap_set_index, seconds);
-		PrintBitmap(grid, bitmaps.Get(bitmap_index, image_index), bins, BIN_COUNT, BIN_DEPTH);
+		PrintBitmap(grid, bitmaps.Get(bitmap_set_index, image_index), bins, BIN_COUNT, BIN_DEPTH);
 		grid->ResetScreen();
 		usleep(1000);
     }
