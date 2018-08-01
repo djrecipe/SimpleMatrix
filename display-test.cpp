@@ -10,7 +10,7 @@
 #include "Config.h"
 #include "glcdfont.h"
 #include "GridTransformer.h"
-#include "BitmapSet.h"
+#include "BitmapManager.h"
 #include "Microphone.h"
 #include "FFT.h"
 
@@ -119,18 +119,16 @@ int main(int argc, char** argv)
 	int display_width = config.GetDisplayWidth();
 	int display_height = config.GetDisplayHeight();
 
-	float animation_duration = config.GetAnimationDuration(0);
 	fprintf(stderr, "Configuring bitmaps...\n");
-	BitmapSet bitmap_set = BitmapSet(animation_duration);
-	for (int i = 0; i < config.GetImageCount(0); i++)
+	BitmapManager bitmaps = BitmapManager();
+	for (int i = 0; i < config.GetImageSetCount(); i++)
 	{
-		bitmap_set.Add(config.GetImage(0, i));
-	}
-	animation_duration = config.GetAnimationDuration(1);
-	BitmapSet bitmap_set2 = BitmapSet(animation_duration);
-	for (int i = 0; i < config.GetImageCount(1); i++)
-	{
-		bitmap_set2.Add(config.GetImage(1, i));
+		float animation_duration = config.GetAnimationDuration(0);
+		bitmaps.CreateSet(animation_duration);
+		for (int j = 0; j < config.GetImageCount(i); j++)
+		{
+			bitmaps.AddImage(i, config.GetImage(i, j));
+		}
 	}
 
 	fprintf(stderr, "Configuring audio device...\n");
@@ -169,26 +167,26 @@ int main(int argc, char** argv)
     cout << "Press Ctrl-C to quit..." << endl;
 	int buffer_size = 1 << FFT_LOG;
 	short buf[buffer_size];
-	bool toggle = false;
+	int bitmap_set_index = 0;
     while (running)
 	{
+		// get new time
 		float seconds = (float)(clock() - begin_time) / (float)CLOCKS_PER_SEC;
+
+		// get microphone data
 		microphone->GetData(buf, buffer_size);
+
+		// process data
 		int** bins = fft->Cycle(buf, BIN_DEPTH, seconds);
-		int bitmap_index = 0;
 		FFTEvents event = fft->GetEvents();
 		if (event == LimitedRangeFFTEvent)
-			toggle = !toggle;
-		if (toggle)
 		{
-			bitmap_index = bitmap_set2.GetIndex(seconds);
-			PrintBitmap(grid, bitmap_set2.Get(bitmap_index), bins, BIN_COUNT, BIN_DEPTH);
+			bitmap_set_index = (bitmap_set_index + 1) % config.GetImageSetCount();
 		}
-		else
-		{
-			bitmap_index = bitmap_set.GetIndex(seconds);
-			PrintBitmap(grid, bitmap_set.Get(bitmap_index), bins, BIN_COUNT, BIN_DEPTH);
-		}
+
+		// print bitmap
+		int image_index = bitmaps.GetIndex(bitmap_set_index, seconds);
+		PrintBitmap(grid, bitmaps.Get(bitmap_index, image_index), bins, BIN_COUNT, BIN_DEPTH);
 		grid->ResetScreen();
 		usleep(1000);
     }
