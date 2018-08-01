@@ -63,8 +63,8 @@ int** FFT::Cycle(short* data, int display_depth, float seconds)
 	FFTOptions options = Logarithmic | Autoscale | Sigmoid;
 	int min = 0, max = 0, avg = 0;
 	this->Normalize(this->bins, this->normalizedBins, this->binCount, display_depth, this->binDepth, options, min, max, avg);
-	if (this->DetectRangeEvent(min, max, avg, seconds))
-		this->fftEvents = LimitedRangeFFTEvent;
+	FFTEvents new_events = this->DetectEvents(min, max, avg, seconds);
+	this->fftEvents = this->fftEvents | new_events;
 	return this->normalizedBins;
 }
 
@@ -84,16 +84,17 @@ void FFT::DeleteBins()
 	return;
 }
 
-bool FFT::DetectRangeEvent(int min, int max, int avg, float seconds)
+FFTEvents FFT::DetectEvents(int min, int max, int avg, float seconds)
 {
 	// TODO : do ALL event detection here
 	//fprintf(stderr, "%f\n", seconds);
 	//fprintf(stderr, "Min: %d | Max: %d | Avg: %d\n", min, max, avg);
+	FFTEvents events = NoneFFTEvent;
 	int range = max - min;
 	if (seconds - this->eventResponseOccurred < 8.0)
 	{
 		this->rangeEventInvalidated = seconds;
-		return false;
+		return events;
 	}
 	if (min > 20)
 		this->rangeEventInvalidated = seconds;
@@ -101,9 +102,9 @@ bool FFT::DetectRangeEvent(int min, int max, int avg, float seconds)
 	{
 		this->rangeEventInvalidated = seconds;
 		this->eventResponseOccurred = seconds;
-		return true;
+		events = events | LimitedRangeFFTEvent;
 	}
-	return false;
+	return events;
 }
 
 void FFT::Get(short* buffer, int* bins, int bin_count, int sample_rate)

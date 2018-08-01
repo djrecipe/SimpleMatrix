@@ -56,7 +56,7 @@ private:
 	FFTEvents fftEvents;
 
 	void DeleteBins();
-	bool DetectRangeEvent(int min, int max, int avg, float seconds);
+	FFTEvents DetectEvents(int min, int max, int avg, float seconds);
 	double SigmoidFunction(double value);
 
 };
