@@ -13,7 +13,7 @@ class Microphone
 {
 
 public:
-	Microphone(char* device);
+	Microphone(std::string device);
 	~Microphone();
 
 	int GetData(short* buffer, int buffer_size);

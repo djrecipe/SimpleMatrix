@@ -14,7 +14,9 @@ Config::Config(const string& filename)
 		cfg.readFile(filename.c_str());
 		libconfig::Setting& root = cfg.getRoot();
 		// audio device
-		audioDevice = root["audio_device"];
+		const char * device_str = root["audio_device"];
+		this->audioDevice = std::string(device_str);
+		fprintf(stderr, "Audo Device: %s\n", this->audioDevice.c_str());
 		// dimension configuration values
 		displayWidth = root["display_width"];
 		displayHeight = root["display_height"];

@@ -5,6 +5,8 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <stdio.h>
+#include <string.h>
 #include <vector>
 
 class Bitmap

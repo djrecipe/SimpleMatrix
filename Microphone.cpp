@@ -2,14 +2,15 @@
 
 using namespace std;
 
-Microphone::Microphone(char* device)
+Microphone::Microphone(std::string device)
 {
 	fprintf(stderr, "Initializing Audio Device\n");
+	const char * device_str = (const char *)device.c_str();
 	int err;
 	/* Open the PCM device in playback mode */
-	if ((err = snd_pcm_open(&pcm_handle, device, SND_PCM_STREAM_CAPTURE, 0)) < 0)
+	if ((err = snd_pcm_open(&pcm_handle, device_str, SND_PCM_STREAM_CAPTURE, 0)) < 0)
 	{
-		fprintf(stderr, "cannot open audio device %s (%s)\n", device, snd_strerror(err));
+		fprintf(stderr, "cannot open audio device %s (%s)\n", device_str, snd_strerror(err));
 		exit(1);
 	}
 

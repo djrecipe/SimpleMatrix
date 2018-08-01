@@ -14,7 +14,8 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-	Microphone * microphone = new Microphone("plughw:1,0");
+	std::string device = "plughw:1,0";
+	Microphone * microphone = new Microphone(device);
 	int err;
 	int buffer_size = 1 << FFT_LOG;
 	short buf[buffer_size];

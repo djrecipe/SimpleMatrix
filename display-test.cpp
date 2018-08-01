@@ -120,13 +120,16 @@ int main(int argc, char** argv)
 	int display_height = config.GetDisplayHeight();
 
 	float animation_duration = config.GetAnimationDuration(0);
+	fprintf(stderr, "Configuring bitmaps...\n");
 	BitmapSet bitmap_set = BitmapSet(animation_duration);
 	for (int i = 0; i < config.GetImageCount(0); i++)
 	{
 		bitmap_set.Add(config.GetImage(0, i));
 	}
 
-	Microphone * microphone = new Microphone(config.GetAudioDevice());
+	fprintf(stderr, "Configuring audio device...\n");
+	std::string device = config.GetAudioDevice();
+	Microphone * microphone = new Microphone(device);
 	FFT * fft = new FFT(FFT_LOG, SAMP_RATE);
 	fft->Create(BIN_COUNT, TOTAL_BIN_DEPTH);
 

@@ -1,5 +1,7 @@
 #include "Bitmap.h"
 
+using namespace std;
+
 Bitmap::Bitmap(const char * path)
 {
 	this->Read(path);
@@ -23,14 +25,14 @@ unsigned int Bitmap::GetHeight()
 
 void Bitmap::Read(const char* path)
 {
-	if (path == NULL or sizeof(path) < 1)
-		throw "Invalid bitmap path";
+	if (path == NULL or strlen(path) < 1)
+		throw invalid_argument("Invalid bitmap path");
 
 	// open file
 	fprintf(stderr, "Reading bitmap '%s'\n", path);
 	FILE* f = fopen(path, "rb");
 	if (f == NULL)
-		throw "Failed to open bitmap file";
+		throw invalid_argument("Failed to open bitmap file");
 
 	// read header
 	unsigned char info[54];
