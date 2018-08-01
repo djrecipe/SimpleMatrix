@@ -88,7 +88,7 @@ FFTEvents FFT::DetectEvents(int min, int max, int avg, float seconds)
 {
 	// TODO : do ALL event detection here
 	//fprintf(stderr, "%f\n", seconds);
-	//fprintf(stderr, "Min: %d | Max: %d | Avg: %d\n", min, max, avg);
+	fprintf(stderr, "Min: %d | Max: %d | Avg: %d\n", min, max, avg);
 	FFTEvents events = NoneFFTEvent;
 	int range = max - min;
 	if (seconds - this->eventResponseOccurred < 8.0)
@@ -96,7 +96,7 @@ FFTEvents FFT::DetectEvents(int min, int max, int avg, float seconds)
 		this->rangeEventInvalidated = seconds;
 		return events;
 	}
-	if (min > 20)
+	if (min > 25 || max > 80)
 		this->rangeEventInvalidated = seconds;
 	if (seconds - this->rangeEventInvalidated > 0.6)
 	{

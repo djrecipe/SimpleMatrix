@@ -123,7 +123,7 @@ int main(int argc, char** argv)
 	BitmapManager bitmaps = BitmapManager();
 	for (int i = 0; i < config.GetImageSetCount(); i++)
 	{
-		float animation_duration = config.GetAnimationDuration(0);
+		float animation_duration = config.GetAnimationDuration(i);
 		bitmaps.CreateSet(animation_duration);
 		for (int j = 0; j < config.GetImageCount(i); j++)
 		{
