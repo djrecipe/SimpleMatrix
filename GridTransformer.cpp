@@ -48,27 +48,23 @@ void GridTransformer::ResetScreen()
 	return;
 }
 
-void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue)
+void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue, bool force)
 {
-  if ((x < 0) || (y < 0) || (x >= _width) || (y >= _height))
-  {
-    return;
-  }
+	// check pixel boundaries
+	assert(x >= 0 && y >= 0 && x < this->_width && y < this->_height);
 
-  if (this->pixelStates[x][y])
-	  return;
-  this->pixelStates[x][y] = true;
+	// check if pixel is too dark
+	if (red < this->cutoff && green < this->cutoff && blue < this->cutoff)
+		return;
 
-  // check if pixel exceeds cutoff (minimum) check
-  if (red < this->cutoff && green < this->cutoff && blue < this->cutoff)
-  {
-	  red = 0;
-	  green = 0;
-	  blue = 0;
-  }
-  // Figure out what row and column panel this pixel is within.
-  int row = y / _panel_height;
-  int col = x / _panel_width;
+	// check if pixel already written to
+	if (this->pixelStates[x][y] && !force)
+		return;
+	this->pixelStates[x][y] = true;
+
+	// Figure out what row and column panel this pixel is within.
+	int row = y / this->_panel_height;
+	int col = x / this->_panel_width;
 
   // Get the panel information for this pixel.
   Panel panel = _panels[_cols*row + col];

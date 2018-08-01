@@ -20,8 +20,9 @@
 // *** this parameter is of great interest
 #define SIGMOID_SLOPE 12.0
 
+enum FFTEvents { NoneFFTEvent = 0, DecreasedAmplitudeFFTEvent = 1, IncreasedAmplitudeFFTEvent = 2, ReturnToLevelFFTEvent = 3 };
+enum FFTEventStates { StandardFFTEventState = 0, QuietFFTEventState = 1, LoudFFTEventState = 2};
 enum FFTOptions { None = 0, Logarithmic = 1, Sigmoid = 2, Autoscale = 4 };
-enum FFTEvents { NoneFFTEvent = 0, LimitedRangeFFTEvent = 1};
 
 inline FFTOptions operator|(FFTOptions a, FFTOptions b) { return static_cast<FFTOptions>(static_cast<int>(a) | static_cast<int>(b)); }
 inline FFTEvents operator|(FFTEvents a, FFTEvents b) { return static_cast<FFTEvents>(static_cast<int>(a) | static_cast<int>(b)); }
@@ -51,12 +52,15 @@ private:
 	int** bins;
 	int** normalizedBins;
 
-	float rangeEventInvalidated = 0.0;
+	float eventInvalidated = 0.0;
 	float eventResponseOccurred = 0.0;
 	FFTEvents fftEvents;
+	FFTEventStates fftEventState;
+	FFTEventStates fftEventStatePending;
 
 	void DeleteBins();
-	FFTEvents DetectEvents(int min, int max, int avg, float seconds);
+	FFTEventStates DetectEventState(int min, int max, int avg, float seconds);
+	FFTEvents DetectEventTransition(FFTEventStates old_state, FFTEventStates new_state);
 	double SigmoidFunction(double value);
 
 };

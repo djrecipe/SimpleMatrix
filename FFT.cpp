@@ -8,7 +8,10 @@ FFT::FFT(int fft_log, int sample_rate)
 	this->eventResponseOccurred = 0.0;
 	this->normalizedBins = NULL;
 	this->fftEvents = NoneFFTEvent;
+	this->fftEventState = StandardFFTEventState;
+	this->fftEventStatePending = StandardFFTEventState;
 	this->fftLog = fft_log;
+	this->eventInvalidated = 0.0;
 	this->sampleRate = sample_rate;
 	this->mailbox = mbox_open();
 	int ret = gpu_fft_prepare(this->mailbox, this->fftLog, GPU_FFT_REV, FFT_JOBS, &(this->fft));
@@ -63,8 +66,10 @@ int** FFT::Cycle(short* data, int display_depth, float seconds)
 	FFTOptions options = Logarithmic | Autoscale | Sigmoid;
 	int min = 0, max = 0, avg = 0;
 	this->Normalize(this->bins, this->normalizedBins, this->binCount, display_depth, this->binDepth, options, min, max, avg);
-	FFTEvents new_events = this->DetectEvents(min, max, avg, seconds);
-	this->fftEvents = this->fftEvents | new_events;
+	FFTEventState new_event_state = this->DetectEventState(min, max, avg, seconds);
+	FFTEvents new_event = this->DetectEventTransition(this->fftEventState, new_event_state);
+	this->fftEvents = new_event;
+	this->fftEventState = new_event_state;
 	return this->normalizedBins;
 }
 
@@ -84,27 +89,102 @@ void FFT::DeleteBins()
 	return;
 }
 
-FFTEvents FFT::DetectEvents(int min, int max, int avg, float seconds)
+FFTEventState FFT::DetectEventState(int min, int max, int avg, float seconds)
 {
-	// TODO : do ALL event detection here
-	//fprintf(stderr, "%f\n", seconds);
-	fprintf(stderr, "Min: %d | Max: %d | Avg: %d\n", min, max, avg);
-	FFTEvents events = NoneFFTEvent;
-	int range = max - min;
-	if (seconds - this->eventResponseOccurred < 8.0)
+	FFTEventState previous_pending = this->fftEventStatePending;
+	fprintf(stderr, "Min: %d | Max: %d | Avg: %d | ", min, max, avg);
+
+	float minimum_sustain_time = 0.6, dead_period = 1.0;
+
+	// detect events
+	if (min <= 18 && max <= 75)
 	{
-		this->rangeEventInvalidated = seconds;
-		return events;
+		this->fftEventStatePending = QuietFFTEventState;
+		minimum_sustain_time = 0.6;
+		dead_period = 2.0;
+		fprintf(stderr, "Quiet\n");
 	}
-	if (min > 25 || max > 80)
-		this->rangeEventInvalidated = seconds;
-	if (seconds - this->rangeEventInvalidated > 0.6)
+	else if (min >= 55 && max >= 92)
 	{
-		this->rangeEventInvalidated = seconds;
+		this->fftEventStatePending = LoudFFTEventState;
+		minimum_sustain_time = 0.2;
+		dead_period = 1.0;
+		fprintf(stderr, "Loud\n");
+	}
+	else
+	{
+		this->fftEventStatePending = StandardFFTEventState;
+		minimum_sustain_time = 1.0;
+		dead_period = 1.0;
+		fprintf(stderr, "Standard\n");
+	}
+	
+	// check for new trend
+	if (this->fftEventStatePending != previous_pending)
+	{
+		this->eventInvalidated = seconds;
+	}
+
+	// confirm new trend
+	if (seconds - this->eventInvalidated > minimum_sustain_time && seconds - this->eventResponseOccurred > dead_period)
+	{
+		this->eventInvalidated = seconds;
 		this->eventResponseOccurred = seconds;
-		events = events | LimitedRangeFFTEvent;
+		return this->fftEventStatePending;
 	}
-	return events;
+	return this->fftEventState;
+}
+
+FFTEvents FFT::DetectEventTransition(FFTEventStates old_state, FFTEventStates new_state)
+{
+	FFTEvents value = NoneFFTEvent;
+	switch (old_state)
+	{
+		default:
+		case StandardFFTEventState:
+			switch (new_state)
+			{
+				default:
+				case StandardFFTEventState:
+					break;
+				case QuietFFTEventState:
+					value = DecreasedAmplitudeFFTEvent; // medium -> low
+					break;
+				case LoudFFTEventState:
+					value = IncreasedAmplitudeFFTEvent; // medium -> high
+					break;
+			}
+			break;
+		case QuietFFTEventState:
+			switch (new_state)
+			{
+				default:
+				case StandardFFTEventState:
+					value = ReturnToLevelFFTEvent;
+					break;
+				case QuietFFTEventState:
+					break;
+				case LoudFFTEventState:
+					value = ReturnToLevelFFTEvent;
+					break;
+			}
+			break;
+		case LoudFFTEventState:
+			switch (new_state)
+			{
+				default:
+				case StandardFFTEventState:
+					value = ReturnToLevelFFTEvent;
+					break;
+				case QuietFFTEventState:
+					value = ReturnToLevelFFTEvent;
+					break;
+				case LoudFFTEventState:
+					break;
+			}
+			break;
+	}
+	return value;
 }
 
 void FFT::Get(short* buffer, int* bins, int bin_count, int sample_rate)

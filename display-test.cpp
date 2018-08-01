@@ -28,6 +28,8 @@ using namespace std;
 using namespace rgb_matrix;
 
 
+enum DisplayModes { BitmapDisplayMode = 0, LowAmplitudeDisplayMode = 1, HighAmplitudeDisplayMode = 2 };
+
 // Global to keep track of if the program should run.
 // Will be set false by a SIGINT handler when ctrl-c is
 // pressed, then the main loop will cleanly exit.
@@ -98,12 +100,34 @@ void PrintBitmap(GridTransformer* canvas, Bitmap* bitmap, int** bins, int bin_co
 	return;
 }
 
+void PrintBorder(GridTransformer* canvas)
+{
+	// print horizontal border lines
+	for (int x = 0; x < bitmap->GetWidth(); x++)
+	{
+		canvas->SetPixel(x, 0, 200, 200, 200, true);
+		canvas->SetPixel(x, bitmap->GetHeight() - 1, 200, 200, 200, true);
+	}
+
+	// print vertical border lines
+	for (int y = 0; y < bitmap->GetHeight(); y++)
+	{
+		canvas->SetPixel(0, y, 200, 200, 200, true);
+		canvas->SetPixel(bitmap->GetWidth() - 1, y, 200, 200, 200, true);
+	}
+	return;
+}
+
+void PrintSparkles(GridTransformer* canvas)
+{
+	canvas->SetPixel(31, 15, 0, 200, 200);
+	return;
+}
+
 static void sigintHandler(int s)
 {
   running = false;
 }
-
-
 
 int main(int argc, char** argv)
 {
@@ -168,6 +192,7 @@ int main(int argc, char** argv)
 	int buffer_size = 1 << FFT_LOG;
 	short buf[buffer_size];
 	int bitmap_set_index = 0;
+	DisplayModes mode = BitmapDisplayMode;
     while (running)
 	{
 		// get new time
@@ -178,20 +203,50 @@ int main(int argc, char** argv)
 
 		// process data
 		int** bins = fft->Cycle(buf, BIN_DEPTH, seconds);
-		FFTEvents event = fft->GetEvents();
-		if (event == LimitedRangeFFTEvent)
+
+		// respond to events
+		FFTEvents fft_event = fft->GetEvents();
+		switch (fft_event)
 		{
-			bitmap_set_index = (bitmap_set_index + 1) % config.GetImageSetCount();
+			case DecreasedAmplitudeFFTEvent:
+				bitmap_set_index = (bitmap_set_index + 1) % config.GetImageSetCount();
+				mode = LowAmplitudeDisplayMode;
+				break;
+			case ReturnToLevelFFTEvent:
+				mode = BitmapDisplayMode;
+				break;
+			case IncreasedAmplitudeFFTEvent:
+				mode = HighAmplitudeDisplayMode;
+				break;
+			default:
+			case NoneFFTEvent:
+				break;
 		}
 
-		// print bitmap
+		// print to LEDs
 		int image_index = bitmaps.GetIndex(bitmap_set_index, seconds);
-		PrintBitmap(grid, bitmaps.Get(bitmap_set_index, image_index), bins, BIN_COUNT, BIN_DEPTH);
+		switch (mode)
+		{
+			case LowAmplitudeDisplayMode:
+				PrintSparkles(grid);
+				break;
+			case HighAmplitudeDisplayMode:
+				PrintBitmap(grid, bitmaps.Get(bitmap_set_index, image_index), bins, BIN_COUNT, BIN_DEPTH);
+				PrintBorder(grid);
+				break;
+			default:
+			case BitmapDisplayMode:
+				PrintBitmap(grid, bitmaps.Get(bitmap_set_index, image_index), bins, BIN_COUNT, BIN_DEPTH);
+				break;
+		}
+
+		// wait for next loop
 		grid->ResetScreen();
 		usleep(1000);
     }
+	// clean-up
     canvas->Clear();
-    delete canvas;
+	delete canvas;
 	delete microphone;
 	delete fft;
   }

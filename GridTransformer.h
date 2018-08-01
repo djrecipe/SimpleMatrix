@@ -10,13 +10,15 @@
 #include "led-matrix.h"
 
 
-class GridTransformer: public rgb_matrix::Canvas, public rgb_matrix::CanvasTransformer {
-public:
-  struct Panel {
-    int order;
-    int rotate;
-    int parallel;
-  };
+class GridTransformer: public rgb_matrix::Canvas, public rgb_matrix::CanvasTransformer
+{
+	public:
+		struct Panel
+		{
+		int order;
+		int rotate;
+		int parallel;
+		};
 
   GridTransformer(int width, int height, int panel_width, int panel_height,
                   int chain_length, const std::vector<Panel>& panels, Canvas* source);
@@ -37,7 +39,7 @@ public:
     assert(_source != NULL);
     _source->Fill(red, green, blue);
   }
-  virtual void SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue);
+  virtual void SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue, bool force = false);
 
   // Transformer interface implementation:
   virtual rgb_matrix::Canvas* Transform(rgb_matrix::Canvas* source);
