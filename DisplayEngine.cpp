@@ -66,50 +66,30 @@ void DisplayEngine::InitializeMatrix(Config config)
 	return;
 }
 
-void DisplayEngine::PrintBitmap(Bitmap* bitmap, int** bins, int bin_count, int bin_depth)
+void DisplayEngine::PrintBitmap(Bitmap* bitmap, float red_gain, float green_gain, float blue_gain)
 {
-	// initialize parameters
-	int x = 0, y = 0, r = 0, g = 0, b = 0, i = 0, j = 0;
-	float decay = 0.0, bin_gain = 0.0, red_gain = 0.0, green_gain = 0.0, blue_gain = 0.0;
+	// retrieve data array
 	unsigned char* data = bitmap->GetData();
-	// calculate color gains based on audio frequency content
-	// iterate through bins, depthwise
-	for (i = 0; i<bin_depth; i++)
-	{
-		// calculate decay (based on age)
-		decay = (float)(BIN_DEPTH - i) / (float)bin_depth;
-		// iterate through all frequency bins (of a given depth)
-		for (j = 0; j<bin_count; j++)
-		{
-			// calculate base gain (based on bin amplitude) (0.0 -> 2.0)
-			bin_gain = (float)bins[i][j] / (FULL_SCALE / 2.0);
-			// increases with bin frequency (0.1 -> 1.0)
-			blue_gain = fmax(bin_gain * ((float)(j + 1) / (float)bin_count)*decay, blue_gain);
-			// increases towards center frequency (0.1 -> 1.0 -> 0.1)
-			green_gain = fmax(bin_gain * ((float)(BIN_COUNT / 2 - abs((j + 1) - bin_count / 2)) / (float)(BIN_COUNT / 2))*decay, green_gain);
-			// decreases with bin frequency (1.0 -> 0.1)
-			red_gain = fmax(bin_gain * ((float)(BIN_COUNT - j) / (float)bin_count)*decay, red_gain);
-		}
-	}
+
 	// iterate through each pixel in the bitmap
-	for (x = 0; x<bitmap->GetWidth(); x++)
+	for (int x = 0; x<bitmap->GetWidth(); x++)
 	{
-		for (y = 0; y<bitmap->GetHeight(); y++)
+		for (int y = 0; y<bitmap->GetHeight(); y++)
 		{
 			// calculate index into single dimensional array of pixel data
 			int index = y * bitmap->GetWidth() * 3 + x * 3;
 			// calculate color
-			r = (float)data[index] * red_gain;
-			g = (float)data[index + 1] * green_gain;
-			b = (float)data[index + 2] * blue_gain;
-			// draw
+			int r = (float)data[index] * red_gain;
+			int g = (float)data[index + 1] * green_gain;
+			int b = (float)data[index + 2] * blue_gain;
+			// draw (mirror y)
 			this->matrix.SetPixel(x, bitmap->GetHeight() - y - 1, r, g, b);
 		}
 	}
 	return;
 }
 
-void DisplayEngine::PrintBorder()
+void DisplayEngine::PrintBorder(float red_gain, float green_gain, float blue_gain)
 {
 	// disable minimum brightness cutoff
 	this->matrix.EnableCutoff(false);
@@ -122,8 +102,8 @@ void DisplayEngine::PrintBorder()
 		{
 			int x_dist = x - this->matrix.width() / 2;
 			int y_dist = y - this->matrix.height() / 2;
-			int color_val = fmax(pow(sqrt(pow(x_dist, 2) + pow(y_dist, 2)), 2) / 32 - 10, 0);
-			this->matrix.SetPixel(x, y, fmin(pow(color_val, 2) / 4, 255), color_val, color_val);
+			float color_val = (float)fmax(pow(sqrt(pow(x_dist, 2) + pow(y_dist, 2)), 2) / 32 - 10, 0);
+			this->matrix.SetPixel(x, y, (int)(color_val * red_gain), (int)(color_val * green_gain), (int)(color_val * blue_gain));
 		}
 	}
 
@@ -132,11 +112,10 @@ void DisplayEngine::PrintBorder()
 	return;
 }
 
-void DisplayEngine::PrintCanvas(int x, int y, const string& message, int r = 255, int g = 255, int b = 255)
+void DisplayEngine::PrintCanvas(int x, int y, const string& text, int r = 255, int g = 255, int b = 255)
 {
-	// Loop through all the characters and print them starting at the provided
-	// coordinates.
-	for (auto c : message)
+	// iterate through characters of text
+	for (auto c : text)
 	{
 		// Loop through each column of the character.
 		for (int i = 0; i<5; ++i)
@@ -160,21 +139,21 @@ void DisplayEngine::PrintCanvas(int x, int y, const string& message, int r = 255
 
 void DisplayEngine::PrintIdentification()
 {
-	// print test
+	// retrieve panel dimensions
 	int panel_rows = this->matrix.getRows();
 	int panel_columns = this->matrix.getColumns();
 	int panel_width = this->matrix.width() / panel_columns;
 	int panel_height = this->matrix.height() / panel_rows;
 
-	// iterate through each panel
+	// iterate through panels
 	for (int j = 0; j<panel_rows; ++j)
 	{
 		for (int i = 0; i<panel_columns; ++i)
 		{
-			// Compute panel origin position.
+			// compute individual panel origin
 			int x = i * panel_width;
 			int y = j * panel_height;
-			// Print the current grid position to the top left (origin) of the panel.
+			// print panel indices to top-left of panel
 			stringstream pos;
 			pos << i << "," << j;
 			this->PrintCanvas(x, y, pos.str());
@@ -183,8 +162,36 @@ void DisplayEngine::PrintIdentification()
 	return;
 }
 
-void DisplayEngine::PrintSparkles(float seconds)
+void DisplayEngine::PrintContractingCircle(float seconds, float red_gain, float green_gain, float blue_gain)
 {
+	// disable minimum brightness cutoff
+	this->matrix.EnableCutoff(false);
+
+	// determine circle time (circle constantly shrinks but resets every second)
+	float duration = 1.0;
+	if(seconds - this->contractingCircleReset > duration)
+	{
+		this->contractingCircleReset = seconds;
+	}
+	float ratio = duration - (seconds - this->contractingCircleReset);
+	
+	// print horizontal border lines
+	int half_width = this->matrix.width()/2;
+	int half_height = this->matrix.height()/2;
+	for (int x = 0; x < this->matrix.width(); x++)
+	{
+		// print vertical border lines
+		for (int y = 0; y < this->matrix.height(); y++)
+		{
+			int x_dist = (int)((float)(half_width - abs(x - half_width)) * ratio);
+			int y_dist = (int)((float)(half_height - abs(y - half_height)) * ratio);
+			float color_val = (float)fmax(pow(sqrt(pow(x_dist, 2) + pow(y_dist, 2)), 2) / 32 - 10, 0);
+			this->matrix.SetPixel(x, y, (int)(color_val * red_gain), (int)(color_val * green_gain), (int)(color_val * blue_gain));
+		}
+	}
+
+	// re-enable minimum brightness cutoff
+	this->matrix.EnableCutoff(true);
 	return;
 }
 
@@ -198,14 +205,15 @@ void DisplayEngine::Start()
 	int buffer_size = 1 << FFT_LOG;
 	short buf[buffer_size];
 
-	// intialize values
+	// initialize values
 	int bitmap_set_index = 0;
 	float last_bitmap_change = 0;
 	DisplayModes mode = BitmapDisplayMode;
+	float red_gain = 1.0, green_gain = 1.0, blue_gain = 1.0;
 
 	// print identification
 	this->PrintIdentification();
-	sleep(1);
+	sleep(3);
 
 	// start loop
 	while (this->running)
@@ -218,6 +226,7 @@ void DisplayEngine::Start()
 
 		// process data
 		int** bins = this->fft.Cycle(buf, BIN_DEPTH, seconds);
+		this->fft.GetColorGains(red_gain, green_gain, blue_gain);
 
 		// respond to events
 		FFTEvents fft_event = this->fft.GetEvents();
@@ -244,18 +253,19 @@ void DisplayEngine::Start()
 
 		// print to LEDs
 		int image_index = this->bitmaps.GetIndex(bitmap_set_index, seconds);
+		Bitmap* bitmap = bitmaps.Get(bitmap_set_index, image_index);
 		switch (mode)
 		{
 		case LowAmplitudeDisplayMode:
-			this->PrintSparkles(seconds);
+			this->PrintContractingCircle(seconds, red_gain, green_gain, blue_gain);
 			break;
 		case HighAmplitudeDisplayMode:
-			this->PrintBitmap(bitmaps.Get(bitmap_set_index, image_index), bins, BIN_COUNT, BIN_DEPTH);
-			this->PrintBorder();
+			this->PrintBitmap(bitmap, red_gain, green_gain, blue_gain);
+			this->PrintBorder(red_gain, green_gain, blue_gain);
 			break;
 		default:
 		case BitmapDisplayMode:
-			this->PrintBitmap(bitmaps.Get(bitmap_set_index, image_index), bins, BIN_COUNT, BIN_DEPTH);
+			this->PrintBitmap(bitmap, red_gain, green_gain, blue_gain);
 			break;
 		}
 

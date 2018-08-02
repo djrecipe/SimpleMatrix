@@ -40,6 +40,7 @@ public:
 	void Create(int count, int depth);
 	int** Cycle(short* buffer, int display_depth, float seconds);
 	void Get(short* buffer, int* bins, int bin_count, int sample_rate);
+	void GetColorGains(float& red_gain, float& green_gain, float& blue_gain);
 	FFTEvents GetEvents();
 	void Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options);
 
@@ -53,6 +54,7 @@ private:
 	int binDepth;
 	int** bins;
 	int** normalizedBins;
+	float redGain = 1.0, greenGain = 1.0, blueGain = 1.0;
 
 	float eventInvalidated = 0.0;
 	float eventResponseOccurred = 0.0;

@@ -32,25 +32,34 @@ FFT::FFT(int fft_log, int sample_rate)
 
 void FFT::Analyze(int* bins, int count, int& min, int& max, int& avg)
 {
+	// reset output variables
 	min = 9999999, max = -9999999, avg = 0;
+
+	// iterate through all frequency bins of a single bin depth
 	for(int i=0; i<count; i++)
 	{
-		// calculate max for all history of all frequency bins
+		// calculate max among all frequency bins of this depth
 		max = fmax(max, bins[i]);
-		// calculate smallest peak occurring to any given frequency bin over all history
+		// calculate min among all frequency bins of this depth
 		min = fmin(min, bins[i]);
+		// calculate average among all frequency bins of this depth
 		avg += bins[i];
 	}
+
+	// finish calculating average
 	avg /= count;
 	return;
 }
 
 void FFT::Archive(int** bins, int count, int depth)
 {
+	// iterate through all bin depths
 	for (int i = depth - 1; i>0; i--)
 	{
+		// iterate through all frequencies of a given bin depth
 		for (int j = 0; j<count; j++)
 		{
+			// move new entries (high index) backwards (towards index 0)
 			bins[i][j] = bins[i - 1][j];
 		}
 	}
@@ -79,11 +88,17 @@ void FFT::Create(int count, int depth)
 
 int** FFT::Cycle(short* data, int display_depth, float seconds)
 {
+	// make space for new bin acquisition
 	this->Archive(this->bins, this->binCount, this->binDepth);
+	// acquire new bin values
 	this->Get(data, this->bins[0], this->binCount, this->sampleRate);
+
+	// normalize bins
 	FFTOptions options = Logarithmic | Autoscale | Sigmoid;
 	int min = 0, max = 0, avg = 0;
 	this->Normalize(this->bins, this->normalizedBins, this->binCount, display_depth, this->binDepth, options);
+
+	// perform analysis and detect events
 	this->Analyze(this->normalizedBins[0], this->binCount, min, max, avg);
 	FFTEventStates new_event_state = this->DetectEventState(min, max, avg, seconds);
 	FFTEvents new_event = this->DetectEventTransition(this->fftEventState, new_event_state);
@@ -256,13 +271,20 @@ void FFT::Get(short* buffer, int* bins, int bin_count, int sample_rate)
 	return;
 }
 
+void FFT::GetColorGains(float& red_gain, float& green_gain, float& blue_gain)
+{
+	red_gain = this->redGain;
+	green_gain = this->greenGain;
+	blue_gain = this->blueGain;
+	return;
+}
+
 FFTEvents FFT::GetEvents()
 {
 	FFTEvents value = this->fftEvents;
 	this->fftEvents = NoneFFTEvent;
 	return value;
 }
-
 
 void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options)
 {
@@ -300,13 +322,16 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 	
 	// calculate range 
 	int range = full_max - full_min;
+	float red_gain = 0.0, green_gain = 0.0, blue_gain = 0.0;
 	// normalize displayed bins only
 	for (i = 0; i<depth; i++)
 	{
-		// reset current frequency bin max
+		// calculate gain decay (based on age)
+		float decay = (float)(depth - i) / (float)depth;
+
+		// iterate through freq bins of a given depth
 		for (j = 0; j<count; j++)
 		{
-
 			// autoscale
 			if ((options & Autoscale) != 0)
 			{
@@ -323,9 +348,22 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 			{
 				normalized_bins[i][j] = SigmoidFunction((double)normalized_bins[i][j]);
 			}
-			
+
+			// calculate base gain (based on bin amplitude) (0.0 -> 2.0)
+			float bin_gain = (float)bins[i][j] / (FULL_SCALE / 2.0);
+			// increases with bin frequency (0.1 -> 1.0)
+			blue_gain = fmax(bin_gain * ((float)(j + 1) / (float)count)*decay, blue_gain);
+			// increases towards center frequency (0.1 -> 1.0 -> 0.1)
+			green_gain = fmax(bin_gain * ((float)(count / 2 - abs((j + 1) - count / 2)) / (float)(count / 2))*decay, green_gain);
+			// decreases with bin frequency (1.0 -> 0.1)
+			red_gain = fmax(bin_gain * ((float)(count - j) / (float)count)*decay, red_gain);
 		}
 	}
+
+	// remember color gains
+	this->redGain = red_gain;
+	this->greenGain = green_gain;
+	this->blueGain = blue_gain;
 	return;
 }
 

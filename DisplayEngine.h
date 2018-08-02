@@ -42,15 +42,17 @@ class DisplayEngine
 		RGBMatrix canvas;
 		GridTransformer matrix;
 		bool running;
+		
+		float contractingCircleReset = 0.0;
 
 		void InitializeAudioDevice(std::string device);
 		void InitializeBitmaps(Config config);
 		void InitializeFFT();
 		void InitializeMatrix(Config config);
 
-		void PrintBitmap(Bitmap* bitmap, int** bins, int bin_count, int bin_depth);
-		void PrintBorder();
+		void PrintBitmap(Bitmap* bitmap, float red_gain, float green_gain, float blue_gain);
+		void PrintBorder(float red_gain, float green_gain, float blue_gain);
 		void PrintCanvas(int x, int y, const string& message, int r = 255, int g = 255, int b = 255);
+		void PrintContractingCircle(float seconds, float red_gain, float green_gain, float blue_gain);
 		void PrintIdentification();
-		void PrintSparkles(float seconds);
 };
