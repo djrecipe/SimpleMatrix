@@ -12,6 +12,7 @@ public:
 	void Clear();
 	void CreateSet(float duration);
 	Bitmap* Get(int set_index, int index);
+	int GetSetCount();
 	int GetIndex(int set_index, float seconds);
 	~BitmapManager();
 private:

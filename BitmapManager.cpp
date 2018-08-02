@@ -37,6 +37,11 @@ int BitmapManager::GetIndex(int set_index, float seconds)
 	return this->sets[set_index]->GetIndex(seconds);
 }
 
+int BitmapManager::GetSetCount()
+{
+	return this->sets.size();
+}
+
 BitmapManager::~BitmapManager()
 {
 	for(int i=0; i<this->sets.size(); i++)
