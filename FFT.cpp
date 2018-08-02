@@ -1,5 +1,7 @@
 #include "FFT.h"
 
+using namespace std;
+
 FFT::FFT(int fft_log, int sample_rate)
 {
 	this->binCount = 0;
@@ -14,15 +16,16 @@ FFT::FFT(int fft_log, int sample_rate)
 	this->eventInvalidated = 0.0;
 	this->sampleRate = sample_rate;
 	this->mailbox = mbox_open();
+	this->minimumStateDuration = 4.0;
 	int ret = gpu_fft_prepare(this->mailbox, this->fftLog, GPU_FFT_REV, FFT_JOBS, &(this->fft));
 
 	switch (ret)
 	{
-		case -1: throw std::runtime_error("Unable to enable V3D. Please check your firmware is up to date.\n");
-		case -2: throw std::runtime_error("log2_N=%d not supported.  Try between 8 and 22.\n");
-		case -3: throw std::runtime_error("Out of memory.  Try a smaller batch or increase GPU memory.\n");
-		case -4: throw std::runtime_error("Unable to map Videocore peripherals into ARM memory space.\n");
-		case -5: throw std::runtime_error("Can't open libbcm_host.\n");
+		case -1: throw runtime_error("Unable to enable V3D. Please check your firmware is up to date.\n");
+		case -2: throw runtime_error("log2_N=%d not supported.  Try between 8 and 22.\n");
+		case -3: throw runtime_error("Out of memory.  Try a smaller batch or increase GPU memory.\n");
+		case -4: throw runtime_error("Unable to map Videocore peripherals into ARM memory space.\n");
+		case -5: throw runtime_error("Can't open libbcm_host.\n");
 	}
 	return;
 }
@@ -94,42 +97,44 @@ FFTEventState FFT::DetectEventState(int min, int max, int avg, float seconds)
 	FFTEventState previous_pending = this->fftEventStatePending;
 	fprintf(stderr, "Min: %d | Max: %d | Avg: %d | ", min, max, avg);
 
-	float minimum_sustain_time = 0.6, dead_period = 1.0;
+	float min_sustain_time = 0.6;		// minimum amount of time current behavior needs to be sustained in order to switch states
+	float new_min_state_duration = 1.0;	// minimum amount of time new state will last IF new state is confirmed
 
 	// detect events
 	if (min <= 18 && max <= 75)
-	{
+	{	// check for quiet
 		this->fftEventStatePending = QuietFFTEventState;
-		minimum_sustain_time = 0.6;
-		dead_period = 2.0;
+		min_sustain_time = 0.6;
+		new_min_state_duration = 0.2;
 		fprintf(stderr, "Quiet\n");
 	}
-	else if (min >= 55 && max >= 92)
-	{
+	else if (min >= 60 && max >= 95)
+	{	// check for loud
 		this->fftEventStatePending = LoudFFTEventState;
-		minimum_sustain_time = 0.2;
-		dead_period = 1.0;
+		min_sustain_time = 0.2;
+		new_min_state_duration = 0.8;
 		fprintf(stderr, "Loud\n");
 	}
 	else
-	{
+	{	// default to standard
 		this->fftEventStatePending = StandardFFTEventState;
-		minimum_sustain_time = 1.0;
-		dead_period = 1.0;
+		min_sustain_time = 1.0;
+		new_min_state_duration = 4.0;
 		fprintf(stderr, "Standard\n");
 	}
 	
-	// check for new trend
+	// reset timer upon change
 	if (this->fftEventStatePending != previous_pending)
 	{
 		this->eventInvalidated = seconds;
 	}
 
-	// confirm new trend
-	if (seconds - this->eventInvalidated > minimum_sustain_time && seconds - this->eventResponseOccurred > dead_period)
+	// confirm new state
+	if (abs(seconds - this->eventInvalidated) > min_sustain_time && abs(seconds - this->eventResponseOccurred) > this->minimumStateDuration)
 	{
 		this->eventInvalidated = seconds;
 		this->eventResponseOccurred = seconds;
+		this->minimumStateDuration = new_min_state_duration;
 		return this->fftEventStatePending;
 	}
 	return this->fftEventState;
