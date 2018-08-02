@@ -94,7 +94,7 @@ void PrintBitmap(GridTransformer* canvas, Bitmap* bitmap, int** bins, int bin_co
 			g = (float)data[index + 1] * green_gain;
 			b = (float)data[index + 2] * blue_gain;
 			// draw
-			canvas->SetPixel(bitmap->GetWidth() - x, bitmap->GetHeight() - y, r, g, b);
+			canvas->SetPixel(bitmap->GetWidth() - x - 1, bitmap->GetHeight() - y - 1, r, g, b);
 		}
 	}
 	return;
@@ -102,25 +102,36 @@ void PrintBitmap(GridTransformer* canvas, Bitmap* bitmap, int** bins, int bin_co
 
 void PrintBorder(GridTransformer* canvas)
 {
+	canvas->EnableCutoff(false);
 	// print horizontal border lines
-	for (int x = 0; x < bitmap->GetWidth(); x++)
+	for (int x = 0; x < canvas->width(); x++)
 	{
-		canvas->SetPixel(x, 0, 200, 200, 200, true);
-		canvas->SetPixel(x, bitmap->GetHeight() - 1, 200, 200, 200, true);
+		// print vertical border lines
+		for (int y = 0; y < canvas->height(); y++)
+		{
+			int x_dist = x - canvas->width()/2;
+			int y_dist = y - canvas->height()/2;
+			int color_val = fmax(pow(sqrt(pow(x_dist, 2) + pow(y_dist, 2)), 2)/32 - 10, 0);
+			canvas->SetPixel(x, y, fmin(pow(color_val, 2)/4, 255), color_val, color_val);
+		}
 	}
 
-	// print vertical border lines
-	for (int y = 0; y < bitmap->GetHeight(); y++)
-	{
-		canvas->SetPixel(0, y, 200, 200, 200, true);
-		canvas->SetPixel(bitmap->GetWidth() - 1, y, 200, 200, 200, true);
-	}
+	canvas->EnableCutoff(true);
 	return;
 }
 
-void PrintSparkles(GridTransformer* canvas)
+void PrintSparkles(GridTransformer* canvas, float seconds)
 {
-	canvas->SetPixel(31, 15, 0, 200, 200);
+	return;
+	int milliseconds = seconds * 100.0;
+	for (int x = 0; x < canvas->width(); x++)
+	{
+		// print vertical border lines
+		for (int y = 0; y < canvas->height(); y++)
+		{
+			canvas->SetPixel(x, y, 200, 0, 0);
+		}
+	}
 	return;
 }
 
@@ -192,6 +203,7 @@ int main(int argc, char** argv)
 	int buffer_size = 1 << FFT_LOG;
 	short buf[buffer_size];
 	int bitmap_set_index = 0;
+	float last_bitmap_change = 0;
 	DisplayModes mode = BitmapDisplayMode;
     while (running)
 	{
@@ -209,7 +221,11 @@ int main(int argc, char** argv)
 		switch (fft_event)
 		{
 			case DecreasedAmplitudeFFTEvent:
-				bitmap_set_index = (bitmap_set_index + 1) % config.GetImageSetCount();
+				if(seconds - last_bitmap_change > 8.0)
+				{
+					bitmap_set_index = (bitmap_set_index + 1) % config.GetImageSetCount();
+					last_bitmap_change = seconds;
+				}
 				mode = LowAmplitudeDisplayMode;
 				break;
 			case ReturnToLevelFFTEvent:
@@ -228,7 +244,7 @@ int main(int argc, char** argv)
 		switch (mode)
 		{
 			case LowAmplitudeDisplayMode:
-				PrintSparkles(grid);
+				PrintSparkles(grid, seconds);
 				break;
 			case HighAmplitudeDisplayMode:
 				PrintBitmap(grid, bitmaps.Get(bitmap_set_index, image_index), bins, BIN_COUNT, BIN_DEPTH);

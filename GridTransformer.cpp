@@ -30,12 +30,28 @@ GridTransformer::GridTransformer(int width, int height, int panel_width, int pan
   }
 
   this->cutoff = 0;
+  this->enableCutoff = true;
+  this->enablePixelOverwrite = false;
   this->maxBrightness = 255;
+  return;
+}
+
+void GridTransformer::EnableCutoff(bool value)
+{
+	this->enableCutoff = value;
+	return;
+}
+
+
+void GridTransformer::EnablePixelOverwrite(bool value)
+{
+  this->enablePixelOverwrite = value;
   return;
 }
 
 void GridTransformer::ResetScreen()
 {
+	this->EnableCutoff(false);
 	for (int x = 0; x < this->_width; x++)
 	{
 		for (int y = 0; y < this->_height; y++)
@@ -45,20 +61,21 @@ void GridTransformer::ResetScreen()
 			this->pixelStates[x][y] = false;
 		}
 	}
+	this->EnableCutoff(true);
 	return;
 }
 
-void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue, bool force)
+void GridTransformer::SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue)
 {
 	// check pixel boundaries
 	assert(x >= 0 && y >= 0 && x < this->_width && y < this->_height);
 
 	// check if pixel is too dark
-	if (red < this->cutoff && green < this->cutoff && blue < this->cutoff)
+	if (red < this->cutoff && green < this->cutoff && blue < this->cutoff && this->enableCutoff)
 		return;
 
 	// check if pixel already written to
-	if (this->pixelStates[x][y] && !force)
+	if (this->pixelStates[x][y] && !this->enablePixelOverwrite)
 		return;
 	this->pixelStates[x][y] = true;
 

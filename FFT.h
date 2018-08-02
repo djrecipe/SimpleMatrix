@@ -35,12 +35,13 @@ public:
 	FFT(int log, int sample_rate);
 	~FFT();
 
+	void Analyze(int* bins, int count, int& min, int& max, int& avg);
 	void Archive(int** bins, int count, int depth);
 	void Create(int count, int depth);
 	int** Cycle(short* buffer, int display_depth, float seconds);
 	void Get(short* buffer, int* bins, int bin_count, int sample_rate);
 	FFTEvents GetEvents();
-	void Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options, int& min, int& max, int& avg);
+	void Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options);
 
 private:
 	int fftLog;
@@ -55,6 +56,7 @@ private:
 
 	float eventInvalidated = 0.0;
 	float eventResponseOccurred = 0.0;
+	float minimumStateDuration = 1.0;
 	FFTEvents fftEvents;
 	FFTEventStates fftEventState;
 	FFTEventStates fftEventStatePending;

@@ -35,11 +35,13 @@ class GridTransformer: public rgb_matrix::Canvas, public rgb_matrix::CanvasTrans
     assert(_source != NULL);
     _source->Clear();
   }
+    
+  
   virtual void Fill(uint8_t red, uint8_t green, uint8_t blue) {
     assert(_source != NULL);
     _source->Fill(red, green, blue);
   }
-  virtual void SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue, bool force = false);
+  virtual void SetPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue);
 
   // Transformer interface implementation:
   virtual rgb_matrix::Canvas* Transform(rgb_matrix::Canvas* source);
@@ -51,6 +53,8 @@ class GridTransformer: public rgb_matrix::Canvas, public rgb_matrix::CanvasTrans
   int getColumns() const {
     return _cols;
   }
+  void EnableCutoff(bool value);
+  void EnablePixelOverwrite(bool value);
   void SetCutoff(int value);
   void SetMaxBrightness(int value);
   void ResetScreen();
@@ -67,6 +71,8 @@ private:
 	  maxBrightness;
   rgb_matrix::Canvas* _source;
   bool ** pixelStates;
+  bool enablePixelOverwrite;
+  bool enableCutoff;
   std::vector<Panel> _panels;
 };
 

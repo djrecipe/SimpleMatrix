@@ -16,7 +16,7 @@ FFT::FFT(int fft_log, int sample_rate)
 	this->eventInvalidated = 0.0;
 	this->sampleRate = sample_rate;
 	this->mailbox = mbox_open();
-	this->minimumStateDuration = 4.0;
+	this->minimumStateDuration = 0.00001;
 	int ret = gpu_fft_prepare(this->mailbox, this->fftLog, GPU_FFT_REV, FFT_JOBS, &(this->fft));
 
 	switch (ret)
@@ -27,6 +27,21 @@ FFT::FFT(int fft_log, int sample_rate)
 		case -4: throw runtime_error("Unable to map Videocore peripherals into ARM memory space.\n");
 		case -5: throw runtime_error("Can't open libbcm_host.\n");
 	}
+	return;
+}
+
+void FFT::Analyze(int* bins, int count, int& min, int& max, int& avg)
+{
+	min = 9999999, max = -9999999, avg = 0;
+	for(int i=0; i<count; i++)
+	{
+		// calculate max for all history of all frequency bins
+		max = fmax(max, bins[i]);
+		// calculate smallest peak occurring to any given frequency bin over all history
+		min = fmin(min, bins[i]);
+		avg += bins[i];
+	}
+	avg /= count;
 	return;
 }
 
@@ -68,8 +83,9 @@ int** FFT::Cycle(short* data, int display_depth, float seconds)
 	this->Get(data, this->bins[0], this->binCount, this->sampleRate);
 	FFTOptions options = Logarithmic | Autoscale | Sigmoid;
 	int min = 0, max = 0, avg = 0;
-	this->Normalize(this->bins, this->normalizedBins, this->binCount, display_depth, this->binDepth, options, min, max, avg);
-	FFTEventState new_event_state = this->DetectEventState(min, max, avg, seconds);
+	this->Normalize(this->bins, this->normalizedBins, this->binCount, display_depth, this->binDepth, options);
+	this->Analyze(this->normalizedBins[0], this->binCount, min, max, avg);
+	FFTEventStates new_event_state = this->DetectEventState(min, max, avg, seconds);
 	FFTEvents new_event = this->DetectEventTransition(this->fftEventState, new_event_state);
 	this->fftEvents = new_event;
 	this->fftEventState = new_event_state;
@@ -92,35 +108,35 @@ void FFT::DeleteBins()
 	return;
 }
 
-FFTEventState FFT::DetectEventState(int min, int max, int avg, float seconds)
+FFTEventStates FFT::DetectEventState(int min, int max, int avg, float seconds)
 {
-	FFTEventState previous_pending = this->fftEventStatePending;
-	fprintf(stderr, "Min: %d | Max: %d | Avg: %d | ", min, max, avg);
+	FFTEventStates previous_pending = this->fftEventStatePending;
+	//fprintf(stderr, "Min: %d | Max: %d | Avg: %d | ", min, max, avg);
 
-	float min_sustain_time = 0.6;		// minimum amount of time current behavior needs to be sustained in order to switch states
-	float new_min_state_duration = 1.0;	// minimum amount of time new state will last IF new state is confirmed
-
+	float min_sustain_time = 0.001;		// minimum amount of time current behavior needs to be sustained in order to switch states
+	float new_min_state_duration = 0.001;	// minimum amount of time new state will last IF new state is confirmed
+	
 	// detect events
-	if (min <= 18 && max <= 75)
+	if (max < 20)
 	{	// check for quiet
 		this->fftEventStatePending = QuietFFTEventState;
-		min_sustain_time = 0.6;
-		new_min_state_duration = 0.2;
-		fprintf(stderr, "Quiet\n");
+		min_sustain_time = 0.1;
+		new_min_state_duration = 0.001;
+		//fprintf(stderr, "Quiet\n");
 	}
-	else if (min >= 60 && max >= 95)
+	else if (max > 85)
 	{	// check for loud
 		this->fftEventStatePending = LoudFFTEventState;
-		min_sustain_time = 0.2;
-		new_min_state_duration = 0.8;
-		fprintf(stderr, "Loud\n");
+		min_sustain_time = 0.01;
+		new_min_state_duration = 0.2;
+		//fprintf(stderr, "Loud\n");
 	}
 	else
 	{	// default to standard
 		this->fftEventStatePending = StandardFFTEventState;
-		min_sustain_time = 1.0;
-		new_min_state_duration = 4.0;
-		fprintf(stderr, "Standard\n");
+		min_sustain_time = 0.001;
+		new_min_state_duration = 0.001;
+		//fprintf(stderr, "Standard\n");
 	}
 	
 	// reset timer upon change
@@ -130,7 +146,7 @@ FFTEventState FFT::DetectEventState(int min, int max, int avg, float seconds)
 	}
 
 	// confirm new state
-	if (abs(seconds - this->eventInvalidated) > min_sustain_time && abs(seconds - this->eventResponseOccurred) > this->minimumStateDuration)
+	if (seconds - this->eventInvalidated > min_sustain_time && seconds - this->eventResponseOccurred > this->minimumStateDuration)
 	{
 		this->eventInvalidated = seconds;
 		this->eventResponseOccurred = seconds;
@@ -170,7 +186,7 @@ FFTEvents FFT::DetectEventTransition(FFTEventStates old_state, FFTEventStates ne
 				case QuietFFTEventState:
 					break;
 				case LoudFFTEventState:
-					value = ReturnToLevelFFTEvent;
+					value = IncreasedAmplitudeFFTEvent;
 					break;
 			}
 			break;
@@ -182,7 +198,7 @@ FFTEvents FFT::DetectEventTransition(FFTEventStates old_state, FFTEventStates ne
 					value = ReturnToLevelFFTEvent;
 					break;
 				case QuietFFTEventState:
-					value = ReturnToLevelFFTEvent;
+					value = DecreasedAmplitudeFFTEvent;
 					break;
 				case LoudFFTEventState:
 					break;
@@ -247,7 +263,8 @@ FFTEvents FFT::GetEvents()
 	return value;
 }
 
-void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options, int& min, int& max, int& avg)
+
+void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int total_depth, FFTOptions options)
 {
 	// initialize parameters
 	int i = 0, j = 0;
@@ -260,10 +277,15 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 		// iterate through all bin history (even not displayed ones)
 		for (i = 0; i<total_depth; i++)
 		{
+			
 			// convert to db
 			if ((options & Logarithmic) != 0)
 			{
 				normalized_bins[i][j] = 20.0 * log10(bins[i][j]);
+			}
+			else
+			{
+				normalized_bins[i][j] = bins[i][j];
 			}
 			// ignore negative values/db
 			normalized_bins[i][j] = fmax(normalized_bins[i][j], 0);
@@ -275,15 +297,13 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 		// calculate smallest peak occurring to any given frequency bin over all history
 		full_min = fmin(full_min, bin_max);
 	}
+	
 	// calculate range 
 	int range = full_max - full_min;
-	avg = 0;
-	min = 999999999, max = -999999999;
 	// normalize displayed bins only
 	for (i = 0; i<depth; i++)
 	{
 		// reset current frequency bin max
-		int bin_max = 0;
 		for (j = 0; j<count; j++)
 		{
 
@@ -298,22 +318,14 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 				normalized_bins[i][j] = FULL_SCALE * ratio;
 			}
 
-			// calculate max for all history of current frequency bin
-			bin_max = fmax(bin_max, normalized_bins[i][j]);
-			// calculate max for all history of all frequency bins
-			max = fmax(max, normalized_bins[i][j]);
-			avg += normalized_bins[i][j];
-
 			// apply sigmoid approximation (emphasize peaks and scale 0.0-100.0)
 			if ((options & Sigmoid) != 0)
 			{
 				normalized_bins[i][j] = SigmoidFunction((double)normalized_bins[i][j]);
 			}
+			
 		}
-		// calculate smallest peak occurring to any given frequency bin over all history
-		min = fmin(min, bin_max);
 	}
-	avg /= (depth * count);
 	return;
 }
 
