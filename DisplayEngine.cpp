@@ -269,6 +269,7 @@ void DisplayEngine::Start()
 		switch (mode)
 		{
 		case LowAmplitudeDisplayMode:
+			this->PrintBitmap(bitmap, red_gain*0.5, green_gain*0.5, blue_gain*0.5);
 			this->PrintContractingCircle(seconds, red_gain, green_gain, blue_gain);
 			break;
 		case HighAmplitudeDisplayMode:
