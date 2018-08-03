@@ -244,23 +244,23 @@ void DisplayEngine::Start()
 		FFTEvents fft_event = this->fft->GetEvents();
 		switch (fft_event)
 		{
-		case DecreasedAmplitudeFFTEvent:
-			if (seconds - last_bitmap_change > MIN_BITMAP_SET_DURATION)
-			{
-				bitmap_set_index = (bitmap_set_index + 1) % this->bitmaps->GetSetCount();
-				last_bitmap_change = seconds;
-			}
-			mode = LowAmplitudeDisplayMode;
-			break;
-		case ReturnToLevelFFTEvent:
-			mode = BitmapDisplayMode;
-			break;
-		case IncreasedAmplitudeFFTEvent:
-			mode = HighAmplitudeDisplayMode;
-			break;
-		default:
-		case NoneFFTEvent:
-			break;
+			case DecreasedAmplitudeFFTEvent:
+				if (seconds - last_bitmap_change > MIN_BITMAP_SET_DURATION)
+				{
+					bitmap_set_index = (bitmap_set_index + 1) % this->bitmaps->GetSetCount();
+					last_bitmap_change = seconds;
+				}
+				mode = LowAmplitudeDisplayMode;
+				break;
+			case ReturnToLevelFFTEvent:
+				mode = BitmapDisplayMode;
+				break;
+			case IncreasedAmplitudeFFTEvent:
+				mode = HighAmplitudeDisplayMode;
+				break;
+			default:
+			case NoneFFTEvent:
+				break;
 		}
 
 		// print to LEDs
