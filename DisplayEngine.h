@@ -17,6 +17,9 @@
 
 #include <led-matrix.h>
 
+using namespace std;
+using namespace rgb_matrix;
+
 #define FFT_LOG 9
 // capture sample rate
 #define SAMP_RATE 11025
@@ -32,23 +35,24 @@ enum DisplayModes { BitmapDisplayMode = 0, LowAmplitudeDisplayMode = 1, HighAmpl
 class DisplayEngine
 {
 	public:
-		DisplayEngine(Config config);
+		DisplayEngine(Config& config);
+		~DisplayEngine();
 		void Start();
 		void Stop();
 	private:
-		BitmapManager bitmaps;
-		Microphone microphone;
-		FFT fft;
-		RGBMatrix canvas;
-		GridTransformer matrix;
+		BitmapManager* bitmaps;
+		Microphone* microphone;
+		FFT* fft;
+		RGBMatrix* canvas;
+		GridTransformer* matrix;
 		bool running;
 		
 		float contractingCircleReset = 0.0;
 
 		void InitializeAudioDevice(std::string device);
-		void InitializeBitmaps(Config config);
+		void InitializeBitmaps(Config& config);
 		void InitializeFFT();
-		void InitializeMatrix(Config config);
+		void InitializeMatrix(Config& config);
 
 		void PrintBitmap(Bitmap* bitmap, float red_gain, float green_gain, float blue_gain);
 		void PrintBorder(float red_gain, float green_gain, float blue_gain);
