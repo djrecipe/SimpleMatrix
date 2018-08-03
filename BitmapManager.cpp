@@ -44,7 +44,7 @@ int BitmapManager::GetSetCount()
 
 BitmapManager::~BitmapManager()
 {
-	for(int i=0; i<this->sets.size(); i++)
+	for(unsigned int i=0; i<this->sets.size(); i++)
 	{
 		delete this->sets[i];
 	}

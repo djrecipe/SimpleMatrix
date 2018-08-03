@@ -4,6 +4,7 @@ using namespace std;
 
 BitmapSet::BitmapSet(float duration)
 {
+	assert(duration > 0);
 	this->duration = duration;
 	this->images.clear();
 	return;
@@ -33,7 +34,7 @@ unsigned int BitmapSet::GetIndex(float seconds)
 	int image_count = this->GetImageCount();
 	int loop_image_count = 1;
 	if (image_count > 1)
-		loop_image_count = ((image_count - 2) * 2) + 2;
+		loop_image_count = fmax(((image_count - 2) * 2) + 2, 1);
 	int divisor = weight / loop_image_count;
 	int index = value / divisor;
 	if (index >= image_count)

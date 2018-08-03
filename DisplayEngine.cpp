@@ -196,7 +196,7 @@ void DisplayEngine::PrintContractingCircle(float seconds, float red_gain, float 
 		{
 			int x_dist = (int)((float)(half_width - abs(x - half_width)) * ratio);
 			int y_dist = (int)((float)(half_height - abs(y - half_height)) * ratio);
-			float color_val = (float)fmax(pow(sqrt(pow(x_dist, 2) + pow(y_dist, 2)), 2) / 32 - 10, 0);
+			float color_val = (float)fmax(pow(sqrt(pow(x_dist, 2) + pow(y_dist, 2)), 2) / 32, 0);
 			this->matrix->SetPixel(x, y, (int)(color_val * red_gain), (int)(color_val * green_gain), (int)(color_val * blue_gain));
 		}
 	}
@@ -245,7 +245,7 @@ void DisplayEngine::Start()
 		switch (fft_event)
 		{
 		case DecreasedAmplitudeFFTEvent:
-			if (seconds - last_bitmap_change > 8.0)
+			if (seconds - last_bitmap_change > MIN_BITMAP_SET_DURATION)
 			{
 				bitmap_set_index = (bitmap_set_index + 1) % this->bitmaps->GetSetCount();
 				last_bitmap_change = seconds;

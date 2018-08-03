@@ -136,7 +136,7 @@ FFTEventStates FFT::DetectEventState(int min, int max, int avg, float seconds)
 	{	// check for quiet
 		this->fftEventStatePending = QuietFFTEventState;
 		min_sustain_time = 0.1;
-		new_min_state_duration = 0.001;
+		new_min_state_duration = 0.2;
 		//fprintf(stderr, "Quiet\n");
 	}
 	else if (max > 85)
@@ -350,7 +350,7 @@ void FFT::Normalize(int** bins, int** normalized_bins, int count, int depth, int
 			}
 
 			// calculate base gain (based on bin amplitude) (0.0 -> 2.0)
-			float bin_gain = (float)bins[i][j] / (FULL_SCALE / 2.0);
+			float bin_gain = (float)normalized_bins[i][j] / (FULL_SCALE / 2.0);
 			// increases with bin frequency (0.1 -> 1.0)
 			blue_gain = fmax(bin_gain * ((float)(j + 1) / (float)count)*decay, blue_gain);
 			// increases towards center frequency (0.1 -> 1.0 -> 0.1)

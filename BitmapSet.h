@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <math.h>
 
 #include "Bitmap.h"

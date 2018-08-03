@@ -20,6 +20,9 @@
 using namespace std;
 using namespace rgb_matrix;
 
+// minimum duration for any given bitmap set
+#define MIN_BITMAP_SET_DURATION 9.0
+
 #define FFT_LOG 9
 // capture sample rate
 #define SAMP_RATE 11025
