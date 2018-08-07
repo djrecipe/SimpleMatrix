@@ -94,7 +94,7 @@ void DisplayEngine::PrintBitmap(Bitmap* bitmap, float red_gain, float green_gain
 			int g = (float)data[index + 1] * green_gain;
 			int b = (float)data[index + 2] * blue_gain;
 			// draw (mirror y)
-			this->matrix->SetPixel(x, bitmap->GetHeight() - y - 1, r, g, b);
+			this->matrix->SetPixel(bitmap->GetWidth() - x - 1, y, r, g, b);
 		}
 	}
 	return;
@@ -259,15 +259,15 @@ void DisplayEngine::Start()
 					last_bitmap_change = seconds;
 				}
 				mode = LowAmplitudeDisplayMode;
-				this->contractingCircleReset = 0.0;
+				this->contractingCircleReset = seconds;
 				break;
 			case ReturnToLevelFFTEvent:
 				mode = BitmapDisplayMode;
-				this->contractingCircleReset = 0.0;
+				this->contractingCircleReset = seconds;
 				break;
 			case IncreasedAmplitudeFFTEvent:
 				mode = HighAmplitudeDisplayMode;
-				this->contractingCircleReset = 0.0;
+				this->contractingCircleReset = seconds;
 				break;
 			default:
 			case NoneFFTEvent:
