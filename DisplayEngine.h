@@ -58,7 +58,7 @@ class DisplayEngine
 		void InitializeMatrix(Config& config);
 
 		void PrintBitmap(Bitmap* bitmap, float red_gain, float green_gain, float blue_gain);
-		void PrintBorder(float red_gain, float green_gain, float blue_gain);
+		void PrintBorder(float seconds, float red_gain, float green_gain, float blue_gain);
 		void PrintCanvas(int x, int y, const string& message, int r = 255, int g = 255, int b = 255);
 		void PrintContractingCircle(float seconds, float red_gain, float green_gain, float blue_gain);
 		void PrintIdentification();

@@ -100,10 +100,18 @@ void DisplayEngine::PrintBitmap(Bitmap* bitmap, float red_gain, float green_gain
 	return;
 }
 
-void DisplayEngine::PrintBorder(float red_gain, float green_gain, float blue_gain)
+void DisplayEngine::PrintBorder(float seconds, float red_gain, float green_gain, float blue_gain)
 {
 	// disable minimum brightness cutoff
 	this->matrix->EnableCutoff(false);
+
+	// determine circle time (circle constantly shrinks but resets every second)
+	float duration = 1.0;
+	if (seconds - this->contractingCircleReset > duration)
+	{
+		this->contractingCircleReset = seconds;
+	}
+	float ratio = duration - (seconds - this->contractingCircleReset);
 
 	// print horizontal border lines
 	for (int x = 0; x < this->matrix->width(); x++)
@@ -111,8 +119,8 @@ void DisplayEngine::PrintBorder(float red_gain, float green_gain, float blue_gai
 		// print vertical border lines
 		for (int y = 0; y < this->matrix->height(); y++)
 		{
-			int x_dist = x - this->matrix->width() / 2;
-			int y_dist = y - this->matrix->height() / 2;
+			int x_dist = (int)((float)(x - this->matrix->width() / 2) * ratio);
+			int y_dist = (int)((float)(y - this->matrix->height() / 2) * ratio);
 			float color_val = (float)fmax(pow(sqrt(pow(x_dist, 2) + pow(y_dist, 2)), 2) / 32 - 10, 0);
 			this->matrix->SetPixel(x, y, (int)(color_val * red_gain), (int)(color_val * green_gain), (int)(color_val * blue_gain));
 		}
@@ -251,12 +259,15 @@ void DisplayEngine::Start()
 					last_bitmap_change = seconds;
 				}
 				mode = LowAmplitudeDisplayMode;
+				this->contractingCircleReset = 0.0;
 				break;
 			case ReturnToLevelFFTEvent:
 				mode = BitmapDisplayMode;
+				this->contractingCircleReset = 0.0;
 				break;
 			case IncreasedAmplitudeFFTEvent:
 				mode = HighAmplitudeDisplayMode;
+				this->contractingCircleReset = 0.0;
 				break;
 			default:
 			case NoneFFTEvent:
@@ -269,12 +280,12 @@ void DisplayEngine::Start()
 		switch (mode)
 		{
 		case LowAmplitudeDisplayMode:
-			this->PrintBitmap(bitmap, red_gain*0.5, green_gain*0.5, blue_gain*0.5);
+			this->PrintBitmap(bitmap, red_gain*0.7, green_gain*0.7, blue_gain*0.7);
 			this->PrintContractingCircle(seconds, red_gain, green_gain, blue_gain);
 			break;
 		case HighAmplitudeDisplayMode:
 			this->PrintBitmap(bitmap, red_gain, green_gain, blue_gain);
-			this->PrintBorder(red_gain, green_gain, blue_gain);
+			this->PrintBorder(seconds, red_gain, green_gain, blue_gain);
 			break;
 		default:
 		case BitmapDisplayMode:
