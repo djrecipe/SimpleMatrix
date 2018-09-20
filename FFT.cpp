@@ -260,7 +260,7 @@ void FFT::Get(short* buffer, int* bins, int bin_count, int sample_rate)
 			if (frequency >= frequencies[j] && frequency < frequencies[j + 1])
 			{
 				// calculate result vector
-				value = sqrt(pow(this->fft->out[i].re, 2) + pow(this->fft->out[i].im, 2));
+				value = this->fft->out[i].re;
 				maxs[j] = fmax(maxs[j], value);
 				bins[j] = (int)maxs[j];
 				max = fmax(maxs[j], max);
