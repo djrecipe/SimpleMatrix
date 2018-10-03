@@ -132,10 +132,10 @@ FFTEventStates FFT::DetectEventState(int min, int max, int avg, float seconds)
 	float new_min_state_duration = 0.001;	// minimum amount of time new state will last IF new state is confirmed
 	
 	// detect events
-	if (max < 20)
+	if (max < 15)
 	{	// check for quiet
 		this->fftEventStatePending = QuietFFTEventState;
-		min_sustain_time = 0.1;
+		min_sustain_time = 0.2;
 		new_min_state_duration = 0.2;
 		//fprintf(stderr, "Quiet\n");
 	}
